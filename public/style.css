@@ -1,4 +1,18 @@
 
 body {
     background: #8080ff;
+    font-family: "Courier New";
+}
+
+.content {
+    background: #c0c0ff;
+    /* height: 800px; */
+    border: solid 2px black;
+    border-radius: 4px;
+    padding: 10px;
+    margin: auto;
+}
+
+p {
+    font-size: 16px;
 }
