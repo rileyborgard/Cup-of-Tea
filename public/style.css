@@ -16,3 +16,17 @@ body {
 p {
     font-size: 16px;
 }
+
+input {
+    border: solid 2px black;
+    border-radius: 4px;
+    padding: 4px;
+    font-size: 16px;
+}
+
+textarea {
+    border: solid 2px black;
+    border-radius: 4px;
+    padding: 4px;
+    font-size: 16px;
+}

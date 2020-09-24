@@ -8,6 +8,11 @@ app.engine('hbs', engines.handlebars);
 app.set('views', './views');
 app.set('view engine', 'hbs');
 
+app.get('/writeblog/', (request, response) => {
+    response.set('Cache-control', 'public, max-age=300, s-maxage=600');
+    response.render('writeblog');
+});
+
 app.get('/', (request, response) => {
     response.set('Cache-control', 'public, max-age=300, s-maxage=600');
     response.render('index');
