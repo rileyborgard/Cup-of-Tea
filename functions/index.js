@@ -9,7 +9,12 @@ app.set('views', './views');
 app.set('view engine', 'hbs');
 
 const MongoClient = require('mongodb').MongoClient;
+
+// To interact with local database, if you have mongodb installed:
 const mongoURL = "mongodb://localhost:27017/mydb";
+
+// Remote database, in MongoDB atlas: (Replace with real password)
+// const mongoURL = "mongodb+srv://admin:<password>@cluster0.iui7x.mongodb.net/teapotdb?retryWrites=true&w=majority";
 
 app.get('/writeblog/', (request, response) => {
     response.set('Cache-control', 'public, max-age=300, s-maxage=600');
@@ -26,10 +31,10 @@ app.post('/postblog/', (request, response) => {
     console.log(blogObject);
     MongoClient.connect(mongoURL, (err, db) => {
         if(err) throw err;
-        var dbo = db.db("mydb");
+        var dbo = db.db("teapotdb");
         dbo.collection("blogs").insertOne(blogObject, (err, res) => {
-            if (err) throw err;
-            console.log("1 document inserted");
+            if(err) throw err;
+            console.log("1 blog inserted to database");
             db.close();
         });
     });
