@@ -4,7 +4,18 @@ const express = require('express');
 const engines = require('consolidate');
 
 const app = express();
-app.engine('hbs', engines.handlebars);
+
+const exphbs = require('express-handlebars');
+const hbs = exphbs.create({
+    extname      :'hbs',
+    layoutsDir   : './views/layouts',
+    defaultLayout: 'index',
+    helpers      : './views',
+    partialsDir  : [
+        './views'
+    ]
+});
+app.engine('hbs', hbs.engine);
 app.set('views', './views');
 app.set('view engine', 'hbs');
 
@@ -18,12 +29,12 @@ const mongoURL = "mongodb://localhost:27017/mydb";
 
 app.get('/writeblog/', (request, response) => {
     response.set('Cache-control', 'public, max-age=300, s-maxage=600');
-    response.render('writeblog');
+    response.render('writeblog', {layout: 'index'});
 });
 
 app.get('/', (request, response) => {
     response.set('Cache-control', 'public, max-age=300, s-maxage=600');
-    response.render('index');
+    response.render('home', {layout: 'index'});
 });
 
 app.post('/postblog/', (request, response) => {
