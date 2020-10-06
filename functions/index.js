@@ -37,6 +37,11 @@ app.get('/', (request, response) => {
     response.render('home', {layout: 'index'});
 });
 
+app.get('/register/', (request, response) => {
+    response.set('Cache-control', 'public, max-age=300, s-maxage=600');
+    response.render('register', {layout: 'index'});
+});
+
 app.post('/postblog/', (request, response) => {
     var blogObject = request.body;
     console.log(blogObject);
