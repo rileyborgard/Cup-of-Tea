@@ -1,5 +1,5 @@
-{{#if name}}
-<p>Welcome, {{name}}!</p>
+{{#if req.user}}
+<p>Welcome, {{req.user.username}}!</p>
 {{else}}
 <p>Home page</p>
 {{/if}}

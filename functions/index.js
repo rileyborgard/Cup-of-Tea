@@ -104,6 +104,11 @@ app.use(session({ secret: 'secret' }));
 app.use(passport.initialize());
 app.use(passport.session());
 
+app.use((request, response, next) => {
+    response.locals.req = request;
+    next();
+});
+
 // Routes
 
 app.get('/writeblog/', (request, response) => {
@@ -113,20 +118,18 @@ app.get('/writeblog/', (request, response) => {
 
 app.get('/', (request, response) => {
     // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
-    if(request.user == null) {
-        response.render('home');
-    }else {
-        response.render('home', { name: request.user.username });
-    }
+    response.render('home');
 });
 
 app.get('/register/', (request, response) => {
     // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
+    request.logout();
     response.render('register');
 });
 
 app.get('/login/', (request, response) => {
     // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
+    request.logout();
     response.render('login');
 });
 
@@ -139,9 +142,9 @@ app.get('/user/:username', (request, response) => {
         }
         if(request.user != null && request.user.username == user.username) {
             // only display private information if that user is the one viewing
-            response.render('profile', { name: user.username, email: user.email });
+            response.render('profile', { username: user.username, email: user.email });
         }else {
-            response.render('profile', { name: user.username });
+            response.render('profile', { username: user.username });
         }
     });
 });
