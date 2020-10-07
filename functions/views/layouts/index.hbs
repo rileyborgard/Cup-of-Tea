@@ -2,7 +2,7 @@
 <html>
     <head>
         <title>Cup of Tea</title>
-        <link rel="stylesheet" href="style.css">
+        <link rel="stylesheet" href="/style.css">
     </head>
     <body>
         <center>
@@ -10,7 +10,10 @@
             <p>This is a basic HTML file</p>
         </center>
         <div class="content">
-            <p>hey</p>
+            {{#if messages.error}}
+                <p>{{messages.error}}</p>
+            {{/if}}
+            {{{body}}}
         </div>
     </body>
 </html>
