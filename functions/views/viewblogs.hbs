@@ -1,20 +1,6 @@
-<html>
-	<head>
-		<title>Cup of Tea</title>
-		<link rel="stylesheet" href=style.css">
-	</head>
-	<body>
-		<center>
-			<h1>Cup of Tea</h1>
-		</center>
-		<div class="content">
-			<ul>
-				{{#each arr}}
-				<li>{{title}}
-				<p>{{body}}</p></li>
-				{{/each}}
-			</ul>
-		</div>
-	</body>
-</html>
-				
+<ul>
+	{{#each arr}}
+	<li>{{title}}
+	<p>{{body}}</p></li>
+	{{/each}}
+</ul>	
