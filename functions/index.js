@@ -30,8 +30,8 @@ app.get('/viewblogs/', (request, response) => {
 		var dbo = db.db("teapotdb");
 		var cursor = dbo.collection("blogs").find();
 		arr = cursor.toArray();
-		console.log("Array: " + arr);
-	response.render('viewblogs', arr);
+		//console.log("Array: " + arr);
+		response.render('viewblogs', {arr: arr});
 	});
 });
 
@@ -43,7 +43,7 @@ const getBlogById = async (id, callback) => {
 			dbo.collection("blogs").findOne({_id: ObjectId(id) }, (err, res) => {
 				if (err) throw err;
 				db.close();
-				console.log("bloafj");
+				//console.log("bloafj");
 				return callback(null, res);
 			});
 		});
@@ -55,13 +55,13 @@ const getBlogById = async (id, callback) => {
 app.get('/viewsingle/:blogid/', (request, response) => {
 	const blogid = request.params.blogid;
 	response.set('Cache-control', 'public, max-age=300, s-maxage=600');
-	console.log("blorg");
+	//console.log("blorg");
 	MongoClient.connect(mongoURL, (err, db) => {
 		if (err) throw err;
 		var id = request.body;
 		getBlogById(blogid, async (err, result) => {
 			if (err) throw err;
-			console.log("blah");
+			//console.log("blah");
 			response.render('viewsingle', {blog: result});
 		});
 	});
