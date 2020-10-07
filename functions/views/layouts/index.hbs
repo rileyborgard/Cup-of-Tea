@@ -10,9 +10,18 @@
             <p>This is a basic HTML file</p>
         </center>
         <div class="content">
-            {{#if messages.error}}
-                <p>{{messages.error}}</p>
-            {{/if}}
+            <center>
+                {{#if messages.error}}
+                    <div class="error-message">
+                        {{messages.error}}
+                    </div>
+                {{/if}}
+                {{#if message}}
+                    <div class="neutral-message">
+                        {{message}}
+                    </div>
+                {{/if}}
+            </center>
             {{{body}}}
         </div>
     </body>

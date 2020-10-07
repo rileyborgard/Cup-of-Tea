@@ -30,3 +30,19 @@ textarea {
     padding: 4px;
     font-size: 16px;
 }
+
+.error-message {
+    display: inline-block;
+    border: solid 2px black;
+    border-radius: 4px;
+    padding: 4px;
+    background: #ff8888;
+}
+
+.neutral-message {
+    display: inline-block;
+    border: solid 2px black;
+    border-radius: 4px;
+    padding: 4px;
+    background: gray;
+}
