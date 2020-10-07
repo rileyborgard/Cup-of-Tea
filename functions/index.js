@@ -107,12 +107,12 @@ app.use(passport.session());
 // Routes
 
 app.get('/writeblog/', (request, response) => {
-    response.set('Cache-control', 'public, max-age=300, s-maxage=600');
+    // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
     response.render('writeblog', {layout: 'index'});
 });
 
 app.get('/', (request, response) => {
-    response.set('Cache-control', 'public, max-age=300, s-maxage=600');
+    // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
     if(request.user == null) {
         response.render('home');
     }else {
@@ -121,17 +121,17 @@ app.get('/', (request, response) => {
 });
 
 app.get('/register/', (request, response) => {
-    response.set('Cache-control', 'public, max-age=300, s-maxage=600');
+    // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
     response.render('register');
 });
 
 app.get('/login/', (request, response) => {
-    response.set('Cache-control', 'public, max-age=300, s-maxage=600');
+    // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
     response.render('login');
 });
 
 app.get('/user/:username', (request, response) => {
-    response.set('Cache-control', 'public, max-age=300, s-maxage=600');
+    // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
     const username = request.params.username;
     getUserByUsername(username, (err, user) => {
         if(err || user == null) {
@@ -144,6 +144,11 @@ app.get('/user/:username', (request, response) => {
             response.render('profile', { name: user.username });
         }
     });
+});
+
+app.get('/logout/', (request, response) => {
+    request.logout();
+    response.redirect('/');
 });
 
 app.post('/postblog/', (request, response) => {
