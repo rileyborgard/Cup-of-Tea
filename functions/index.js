@@ -130,6 +130,22 @@ app.get('/login/', (request, response) => {
     response.render('login');
 });
 
+app.get('/user/:username', (request, response) => {
+    response.set('Cache-control', 'public, max-age=300, s-maxage=600');
+    const username = request.params.username;
+    getUserByUsername(username, (err, user) => {
+        if(err || user == null) {
+            return response.render('home', { message: 'User not found' });
+        }
+        if(request.user != null && request.user.username == user.username) {
+            // only display private information if that user is the one viewing
+            response.render('profile', { name: user.username, email: user.email });
+        }else {
+            response.render('profile', { name: user.username });
+        }
+    });
+});
+
 app.post('/postblog/', (request, response) => {
     var blogObject = request.body;
     console.log(blogObject);
