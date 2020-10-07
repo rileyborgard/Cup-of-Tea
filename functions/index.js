@@ -104,10 +104,15 @@ app.use(session({ secret: 'secret' }));
 app.use(passport.initialize());
 app.use(passport.session());
 
+app.use((request, response, next) => {
+    response.locals.req = request;
+    next();
+});
+
 // Routes
 
 app.get('/writeblog/', (request, response) => {
-    response.set('Cache-control', 'public, max-age=300, s-maxage=600');
+    // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
     response.render('writeblog', {layout: 'index'});
 });
 
@@ -148,22 +153,41 @@ app.get('/viewsingle/:blogid/', (request, response) => {
 
 
 app.get('/', (request, response) => {
-    response.set('Cache-control', 'public, max-age=300, s-maxage=600');
-    if(request.user == null) {
-        response.render('home');
-    }else {
-        response.render('home', { name: request.user.username });
-    }
+    // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
+    response.render('home');
 });
 
 app.get('/register/', (request, response) => {
-    response.set('Cache-control', 'public, max-age=300, s-maxage=600');
+    // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
+    request.logout();
     response.render('register');
 });
 
 app.get('/login/', (request, response) => {
-    response.set('Cache-control', 'public, max-age=300, s-maxage=600');
+    // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
+    request.logout();
     response.render('login');
+});
+
+app.get('/user/:username', (request, response) => {
+    // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
+    const username = request.params.username;
+    getUserByUsername(username, (err, user) => {
+        if(err || user == null) {
+            return response.render('home', { message: 'User not found' });
+        }
+        if(request.user != null && request.user.username == user.username) {
+            // only display private information if that user is the one viewing
+            response.render('profile', { username: user.username, email: user.email });
+        }else {
+            response.render('profile', { username: user.username });
+        }
+    });
+});
+
+app.get('/logout/', (request, response) => {
+    request.logout();
+    response.redirect('/');
 });
 
 app.post('/postblog/', (request, response) => {

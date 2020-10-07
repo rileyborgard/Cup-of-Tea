@@ -8,11 +8,27 @@
         <center>
             <h1>Cup of Tea</h1>
             <p>This is a basic HTML file</p>
+            {{#if req.user}}
+                <a href="/logout/">Logout</a>
+                <a href="/user/{{req.user.username}}">{{req.user.username}}</a>
+            {{else}}
+                <a href="/login/">Login</a>
+                <a href="/register/">Register</a>
+            {{/if}}
         </center>
         <div class="content">
-            {{#if messages.error}}
-                <p>{{messages.error}}</p>
-            {{/if}}
+            <center>
+                {{#if messages.error}}
+                    <div class="error-message">
+                        {{messages.error}}
+                    </div>
+                {{/if}}
+                {{#if message}}
+                    <div class="neutral-message">
+                        {{message}}
+                    </div>
+                {{/if}}
+            </center>
             {{{body}}}
         </div>
     </body>
