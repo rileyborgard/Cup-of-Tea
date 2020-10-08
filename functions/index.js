@@ -152,7 +152,7 @@ app.get('/viewsingle/:blogid/', (request, response) => {
 	const blogid = request.params.blogid;
     getBlogById(blogid, async (err, result) => {
         if (err || result == null) {
-            response.flash('error', 'could not find blog');
+            request.flash('error', 'could not find blog');
             return response.redirect('/');
         }
         if(request.user != null && request.user.username == result.author) {
@@ -205,11 +205,11 @@ app.get('/edit/:blogid', (request, response) => {
     }
     getBlogById(request.params.blogid, async (err, blog) => {
         if (err || blog == null) {
-            response.flash('error', 'could not find blog');
+            request.flash('error', 'could not find blog');
             return response.redirect('/');
         }
         if(blog.author != request.user.username) {
-            response.flash('error', 'you don\'t have permission to edit');
+            request.flash('error', 'you don\'t have permission to edit');
             return response.redirect('/');
         }
         response.render('editblog', { blog: blog });
@@ -243,6 +243,43 @@ app.post('/postblog/', (request, response) => {
             });
         });
     }catch {
+        request.flash('error', 'Error posting blog');
+        response.redirect('/');
+    }
+});
+
+app.post('/postblogedit/:blogid', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in');
+        return response.redirect('/login/');
+    }
+    try {
+        var blogid = request.params.blogid;
+        getBlogById(blogid, async (err, blog) => {
+            if(err || blog == null) {
+                request.flash('error', 'could not find blog');
+                return response.redirect('/');
+            }
+            if(blog.author != request.user.username) {
+                request.flash('error', 'you don\'t have permission to edit');
+                return response.redirect('/');
+            }
+            MongoClient.connect(mongoURL, (err, db) => {
+                if(err) throw err;
+                var dbo = db.db("teapotdb");
+                var query = { _id: ObjectId(blogid) };
+                var newvals = { $set: { title: request.body.title, body: request.body.body }};
+                dbo.collection('blogs').updateOne(query, newvals, (err, res) => {
+                    if(err) throw err;
+                    console.log("1 blog updated");
+                    db.close();
+                    request.flash('info', 'Blog updated');
+                    response.redirect('/viewsingle/' + blogid)
+                });
+            });
+        });
+    }catch {
+        // throw e;
         request.flash('error', 'Error posting blog');
         response.redirect('/');
     }
