@@ -1,2 +1,4 @@
 node_modules/
 pass.txt
+.firebaserc
+firebase.json
