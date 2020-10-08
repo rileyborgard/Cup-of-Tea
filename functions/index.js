@@ -197,18 +197,30 @@ app.get('/logout/', (request, response) => {
 });
 
 app.post('/postblog/', (request, response) => {
+    if(request.user == null) {
+        request.flash("must be logged in");
+        return response.redirect('/login/');
+    }
     var blogObject = request.body;
+    blogObject.author = request.user.username;
     console.log(blogObject);
-    MongoClient.connect(mongoURL, (err, db) => {
-        if(err) throw err;
-        var dbo = db.db("teapotdb");
-        dbo.collection("blogs").insertOne(blogObject, (err, res) => {
+    try {
+        MongoClient.connect(mongoURL, (err, db) => {
             if(err) throw err;
-            console.log("1 blog inserted to database");
-            db.close();
+            var dbo = db.db("teapotdb");
+            dbo.collection("blogs").insertOne(blogObject, (err, res) => {
+                if(err) throw err;
+                console.log("1 blog inserted to database");
+                db.close();
+                console.log("blog:");
+                console.log(res.ops[0]._id.toString());
+                return response.redirect('/viewsingle/' + res.ops[0]._id.toString());
+            });
         });
-    });
-    response.redirect('/');
+    }catch {
+        request.flash('error', 'Error posting blog');
+        response.redirect('/');
+    }
 });
 
 app.post('/postregister', async (request, response) => {
