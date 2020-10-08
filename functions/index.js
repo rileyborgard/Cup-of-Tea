@@ -151,7 +151,10 @@ const getBlogById = async (id, callback) => {
 app.get('/viewsingle/:blogid/', (request, response) => {
 	const blogid = request.params.blogid;
     getBlogById(blogid, async (err, result) => {
-        if (err) throw err;
+        if (err || result == null) {
+            response.flash('error', 'could not find blog');
+            return response.redirect('/');
+        }
         if(request.user != null && request.user.username == result.author) {
             response.render('viewsingle', {blog: result, editbutton: true});
         }else {
@@ -195,6 +198,24 @@ app.get('/user/:username', (request, response) => {
     });
 });
 
+app.get('/edit/:blogid', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in');
+        return response.redirect('/login/');
+    }
+    getBlogById(request.params.blogid, async (err, blog) => {
+        if (err || blog == null) {
+            response.flash('error', 'could not find blog');
+            return response.redirect('/');
+        }
+        if(blog.author != request.user.username) {
+            response.flash('error', 'you don\'t have permission to edit');
+            return response.redirect('/');
+        }
+        response.render('editblog', { blog: blog });
+    });
+});
+
 app.get('/logout/', (request, response) => {
     request.logout();
     response.redirect('/');
@@ -202,7 +223,7 @@ app.get('/logout/', (request, response) => {
 
 app.post('/postblog/', (request, response) => {
     if(request.user == null) {
-        request.flash("must be logged in");
+        request.flash('error', 'must be logged in');
         return response.redirect('/login/');
     }
     var blogObject = request.body;
