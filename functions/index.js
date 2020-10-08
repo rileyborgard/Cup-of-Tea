@@ -157,7 +157,11 @@ app.get('/viewsingle/:blogid/', (request, response) => {
         }
         if(request.user != null && request.user.username == result.author) {
             response.render('viewsingle', {blog: result, editbutton: true});
-        }else {
+        }
+        else if(request.user != null && request.user.username != null && request.user.username != result.author) {
+            response.render('viewsingle', {blog: result, upvote: true, downvote: true});
+        }
+        else {
             response.render('viewsingle', {blog: result});
         }
     });
@@ -228,6 +232,7 @@ app.post('/postblog/', (request, response) => {
     }
     var blogObject = request.body;
     blogObject.author = request.user.username;
+    blogObject.voteCount = 0;
     console.log(blogObject);
     try {
         MongoClient.connect(mongoURL, (err, db) => {
@@ -284,6 +289,63 @@ app.post('/postblogedit/:blogid', (request, response) => {
         response.redirect('/');
     }
 });
+
+app.get('/viewsingle/:blogid/voteup', (request, response) => {
+    try {
+        var blogid = request.params.blogid;
+        getBlogById(blogid, async (err, blog) => {
+            if (err || blog == null) {
+                request.flash('error', 'could not find blog');
+                return response.redirect('/');
+            }
+            MongoClient.connect(mongoURL, (err, db) => {
+                if(err) throw err;
+                var dbo = db.db("teapotdb");
+                var query = { _id: ObjectId(blogid) };
+                var newVals = { $inc: {voteCount: 1}};
+                dbo.collection('blogs').updateOne(query, newVals, (err, res) => {
+                    if(err) throw err;
+                    console.log("Blog has been upvoted");
+                    db.close();
+                    request.flash('info', 'Vote Count Updated');
+                    response.redirect('/viewsingle/' + blogid)
+                });
+            });
+        });
+    }catch {
+        request.flash('error', 'Error voting on blog');
+        response.redirect('/');
+    }
+});
+
+app.get('/viewsingle/:blogid/votedown', (request, response) => {
+    try {
+        var blogid = request.params.blogid;
+        getBlogById(blogid, async (err, blog) => {
+            if (err || blog == null) {
+                request.flash('error', 'could not find blog');
+                return response.redirect('/');
+            }
+            MongoClient.connect(mongoURL, (err, db) => {
+                if(err) throw err;
+                var dbo = db.db("teapotdb");
+                var query = { _id: ObjectId(blogid) };
+                var newVals = { $inc: {voteCount: -1}};
+                dbo.collection('blogs').updateOne(query, newVals, (err, res) => {
+                    if(err) throw err;
+                    console.log("Blog has been downvoted");
+                    db.close();
+                    request.flash('info', 'Vote Count Updated');
+                    response.redirect('/viewsingle/' + blogid)
+                });
+            });
+        });
+    }catch {
+        request.flash('error', 'Error voting on blog');
+        response.redirect('/');
+    }
+});
+
 
 app.post('/postregister', async (request, response) => {
     var userObject = request.body;
