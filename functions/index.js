@@ -75,7 +75,7 @@ const authUser = async (username, password, done) => {
             if(await bcrypt.compare(password, user.password)) {
                 return done(null, user);
             }else {
-                return done(null, false, { message: 'Invalid passowrd' });
+                return done(null, false, { message: 'Invalid password' });
             }
         }catch(e) {
             return done(e);
@@ -113,7 +113,12 @@ app.use((request, response, next) => {
 
 app.get('/writeblog/', (request, response) => {
     // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
-    response.render('writeblog', {layout: 'index'});
+    if(request.user) {
+        response.render('writeblog');
+    }else {
+        request.flash('error', 'must be logged in');
+        response.redirect('/login/');
+    }
 });
 
 app.get('/viewblogs/', (request, response) => {
@@ -174,7 +179,8 @@ app.get('/user/:username', (request, response) => {
     const username = request.params.username;
     getUserByUsername(username, (err, user) => {
         if(err || user == null) {
-            return response.render('home', { message: 'User not found' });
+            request.flash('error', 'User not found');
+            return response.redirect('/');
         }
         if(request.user != null && request.user.username == user.username) {
             // only display private information if that user is the one viewing
@@ -216,10 +222,11 @@ app.post('/postregister', async (request, response) => {
             dbo.collection("users").insertOne(userObject, (err, res) => {
                 if(err) throw err;
                 console.log("1 user inserted to database");
+                request.flash('info', 'Account registered, please login.');
+                response.redirect('/login/');
                 db.close();
             });
         });
-        response.redirect('/login/');
     }catch {
         console.log('error registering, redirecting to register page');
         response.redirect('/register/');
