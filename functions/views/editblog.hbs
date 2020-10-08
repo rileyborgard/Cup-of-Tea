@@ -1,10 +1,12 @@
 
 <center>
-    <h1>Edit blog</h1>
-	<h1>{{blog.title}}</h1>
+    <h1>Edit Blog</h1>
+    <form method="post" action="/postblogedit/{{blog._id}}">
+        <label>Title</label><br>
+        <input type="text" name="title" value="{{blog.title}}"><br><br>
+        <label>Body</label><br>
+        <textarea rows="8" name="body">{{blog.body}}</textarea><br><br>
+        <input type="button" value="Preview">
+        <input type="submit" value="Submit">
+    </form>
 </center>
-<p> By: <a href="/user/{{blog.author}}">{{blog.author}}</a></p>
-<p>{{blog.body}}</p>
-{{#if editbutton}}
-	<a href="/edit/{{blog._id}}">Edit</a>
-{{/if}}
