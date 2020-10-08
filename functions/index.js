@@ -152,7 +152,11 @@ app.get('/viewsingle/:blogid/', (request, response) => {
 	const blogid = request.params.blogid;
     getBlogById(blogid, async (err, result) => {
         if (err) throw err;
-        response.render('viewsingle', {blog: result});
+        if(request.user != null && request.user.username == result.author) {
+            response.render('viewsingle', {blog: result, editbutton: true});
+        }else {
+            response.render('viewsingle', {blog: result});
+        }
     });
 });
 
