@@ -167,6 +167,19 @@ app.get('/viewsingle/:blogid/', (request, response) => {
     });
 });
 
+app.get('/timeline/:sorttype/', (request, response) => {
+	const sort = request.params.sorttype;
+	MongoClient.connect(mongoURL, (err, db) => {
+		if (err) throw err;
+		var dbo = db.db("teapotdb");
+		dbo.collection("blogs").find().toArray((err, result) => {
+			/*result.forEach((item, index) => {
+				console.log(item);
+			});*/
+			response.render('viewblogs', {arr: result});
+		});
+	});
+});
 
 app.get('/', (request, response) => {
     // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
