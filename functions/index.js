@@ -176,6 +176,27 @@ app.get('/timeline/:sorttype/', (request, response) => {
 			/*result.forEach((item, index) => {
 				console.log(item);
 			});*/
+			if (sort == "time") {
+				result.reverse();
+			} else if (sort == "votes") {
+				result.sort(function(first, second) {
+					var firstVotes = first.voteCount;
+					var secondVotes = second.voteCount;
+					if (firstVotes == null) {
+						firstVotes = 0;
+					}
+					if (secondVotes == null) {
+						secondVotes = 0;
+					}
+					if (firstVotes < secondVotes) {
+						return 1;
+					} else if (firstVotes > secondVotes) {
+						return -1;
+					} else {
+						return 0;
+					}
+				});
+			}
 			response.render('viewblogs', {arr: result});
 		});
 	});
