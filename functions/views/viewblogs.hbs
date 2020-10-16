@@ -1,8 +1,8 @@
 <ul>
 	{{#each arr}}
-	<li><h1>{{title}}</h1>
-	<p>by: {{author}}<p>
-	<p>votes: {{voteCount}}<p>
+	<li><h1><a href="/viewsingle/{{_id}}">{{title}}</a></h1>
+	<p>by: <a href="/user/{{author}}">{{author}}</a><p>
+	<p>votes: {{voteCount}} <a href="/viewsingle/{{_id}}/voteup">+</a> <a href="/viewsingle/{{_id}}/votedown">-</a></p>
 	<p><h2>{{body}}</h2></p></li>
 	{{/each}}
 </ul>	

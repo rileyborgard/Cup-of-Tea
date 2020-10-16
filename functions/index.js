@@ -197,7 +197,11 @@ app.get('/timeline/:sorttype/', (request, response) => {
 					}
 				});
 			}
-			response.render('viewblogs', {arr: result});
+			if (request.user != null) {
+				response.render('viewblogs', {arr: result, vote: true});
+			} else {
+				response.render('viewblogs', {arr: result, vote: false});
+			}
 		});
 	});
 });
