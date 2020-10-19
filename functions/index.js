@@ -147,6 +147,21 @@ const getBlogById = async (id, callback) => {
 		return callback(err, null);
 	}
 }
+const getBlogByTopic = async (topicname, callback) => {
+	try {
+		MongoClient.connect(mongoURL, (err, db) => {
+			if (err) throw err;
+			var dbo = db.db("teapotdb");
+			dbo.collection("blogs").findOne({topic: topicname }, (err, res) => {
+				if (err) throw err;
+				db.close();
+				return callback(null, res);
+			});
+		});
+	} catch (err) {
+		return callback(err, null);
+	}
+}
 
 app.get('/viewsingle/:blogid/', (request, response) => {
 	const blogid = request.params.blogid;
@@ -167,6 +182,17 @@ app.get('/viewsingle/:blogid/', (request, response) => {
     });
 });
 
+app.get('/topic/:topicname/', (request, response) => {
+    const topicname = request.params.topicname;
+    getBlogByTopic(topicname, async (err, result) => {
+        if(err || result == null) {
+            request.flash('error', 'could not find blog');
+            return response.redirect('/');
+        }else {
+            response.redirect('/viewsingle/' + result._id.toString());
+        }
+    });
+});
 
 app.get('/', (request, response) => {
     // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
