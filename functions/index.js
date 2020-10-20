@@ -418,6 +418,17 @@ app.get('/viewsingle/:blogid/save', (request, response) => {
 	}
 });
 
+app.get('/saved/', (request, response) => {
+	getUserByUsername(request.user.username, (err, user) => {
+		if (err || user == null) {
+			request.flash('error', 'Please login first');
+			return response.redirect('/login/');
+		} else {
+			response.render('saved', {arr: user.saved});
+		}
+	});
+});
+
 app.post('/postregister', async (request, response) => {
     var userObject = request.body;
     // TODO: validate user object

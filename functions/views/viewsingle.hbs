@@ -8,6 +8,9 @@
 {{#if editbutton}}
 	<a href="/edit/{{blog._id}}">Edit</a>
 {{/if}}
+{{#if savebutton}}
+	<a href="/viewsingle/{{blog._id}}/save">Save</a>
+{{/if}}
 {{#if upvote}}
     <a href="/viewsingle/{{blog._id}}/voteup">Upvote</a>
 {{/if}}
