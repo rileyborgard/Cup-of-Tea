@@ -156,10 +156,10 @@ app.get('/viewsingle/:blogid/', (request, response) => {
             return response.redirect('/');
         }
         if(request.user != null && request.user.username == result.author) {
-            response.render('viewsingle', {blog: result, editbutton: true});
+            response.render('viewsingle', {blog: result, editbutton: true, savebutton: true});
         }
         else if(request.user != null && request.user.username != null && request.user.username != result.author) {
-            response.render('viewsingle', {blog: result, upvote: true, downvote: true});
+            response.render('viewsingle', {blog: result, upvote: true, downvote: true, savebutton: true});
         }
         else {
             response.render('viewsingle', {blog: result});
@@ -384,6 +384,39 @@ app.get('/viewsingle/:blogid/votedown', (request, response) => {
     }
 });
 
+app.get('/viewsingle/:blogid/save', (request, response) => {
+	try {
+		var blogid = request.params.blogid;
+		getBlogById(blogid, async (err, blog) => {
+			if (err || blog == null) {
+				request.flash('error', 'could not find blog');
+				return response.redirect('/');
+			}
+			MongoClient.connect(mongoURL, (err, db) => {
+				if (err) throw err;
+				var dbo = db.db("teapotdb");
+				getUserByUsername(request.user.username, async(err, user) => {
+					if (user.saved == null) {
+						dbo.collection("users").updateOne({username: request.user.username}, {$set: {saved: [blog]}}, (err, res) => {
+							if (err) throw err;
+							request.flash('info', "Blog saved");
+							response.redirect('/viewsingle/' + blogid);
+						});
+					} else {
+						dbo.collection("users").updateOne({username: request.user.username}, {$push: {saved: blog}}, (err, res) => {
+							if (err) throw err;
+							request.flash('info', 'Blog saved');
+							response.redirect('/viewsingle/' + blogid);
+						});
+					}
+				});
+			});
+		});
+	} catch {
+		request.flash('error', "Error saving blog");
+		response.redirect('/');
+	}
+});
 
 app.post('/postregister', async (request, response) => {
     var userObject = request.body;
