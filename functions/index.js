@@ -182,7 +182,7 @@ app.get('/viewsingle/:blogid/', (request, response) => {
                 db.close();
             });
         });
-        if(/*request.user != null && request.user.username == result.author*/ 1) {
+        if(request.user != null && request.user.username == result.author) {
             response.render('viewsingle', {blog: result, editbutton: true, comments : comments});
         }
         else if(request.user != null && request.user.username != null && request.user.username != result.author) {
@@ -277,7 +277,6 @@ app.post('/postcomment/:blogid/', (request, response) => {
                 if(err) throw err;
                 console.log("1 comment inserted to database");
                 db.close();
-                console.log("comment:");
                 return response.redirect('/viewsingle/' + commentObject.blogid);
             });
         });
