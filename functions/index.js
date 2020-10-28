@@ -164,32 +164,58 @@ const getBlogById = async (id, callback) => {
 	}
 }
 
+const getComments = async (id, callback) => {
+        try {
+            MongoClient.connect(mongoURL, (err, db) => {
+                if(err) throw err;
+                var dbo = db.db("teapotdb");
+                dbo.collection("comments").find({"blogid": id}).toArray(function(err, res) {
+                    if (res.length > 0) {
+                        console.log("more than 1");
+                    }
+                    db.close();
+                    return callback(null, res);
+                });
+            });
+        } catch (err) {
+            return callback(err, null);
+        }
+}
+
 app.get('/viewsingle/:blogid/', (request, response) => {
 	const blogid = request.params.blogid;
+    
     getBlogById(blogid, async (err, result) => {
         if (err || result == null) {
             request.flash('error', 'could not find blog');
             return response.redirect('/');
         }
-        var comments;
-        MongoClient.connect(mongoURL, (err, db) => {
-            if(err) throw err;
-            var dbo = db.db("teapotdb");
-            comments = dbo.collection("comments").find({"blogid": blogid}).toArray(function(err, comments) {
-                if (comments.length > 0) {
-                    console.log(comments);
-                }
-                db.close();
-            });
-        });
         if(request.user != null && request.user.username == result.author) {
-            response.render('viewsingle', {blog: result, editbutton: true, comments : comments});
+            getComments(blogid, async (err, res) => {
+                if (err || res == null) {
+                    request.flash('error', 'could not find blog');
+                    return response.redirect('/');
+                }
+                response.render('viewsingle', {blog: result, editbutton: true, comments : res});
+            });
         }
         else if(request.user != null && request.user.username != null && request.user.username != result.author) {
-            response.render('viewsingle', {blog: result, upvote: true, downvote: true, comments : comments});
+            getComments(blogid, async (err, res) => {
+                if (err || res == null) {
+                    request.flash('error', 'could not find blog');
+                    return response.redirect('/');
+                }
+                response.render('viewsingle', {blog: result, upvote: true, downvote: true, comments : res});
+            });
         }
         else {
-            response.render('viewsingle', {blog: result, comments : comments});
+            getComments(blogid, async (err, res) => {
+                if (err || res == null) {
+                    request.flash('error', 'could not find blog');
+                    return response.redirect('/');
+                }
+                response.render('viewsingle', {blog: result, comments : res});
+            });
         }
     });
 });
@@ -253,7 +279,6 @@ app.get('/logout/', (request, response) => {
 });
 
 app.post('/postcomment/:blogid/', (request, response) => {
-    console.log(request.body);
     if(request.user == null) {
         request.flash('error', 'must be logged in to comment');
         return response.redirect('/login/');
