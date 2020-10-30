@@ -167,6 +167,44 @@ app.get('/viewsingle/:blogid/', (request, response) => {
     });
 });
 
+app.get('/timeline/:sorttype/', (request, response) => {
+	const sort = request.params.sorttype;
+	MongoClient.connect(mongoURL, (err, db) => {
+		if (err) throw err;
+		var dbo = db.db("teapotdb");
+		dbo.collection("blogs").find().toArray((err, result) => {
+			/*result.forEach((item, index) => {
+				console.log(item);
+			});*/
+			if (sort == "time") {
+				result.reverse();
+			} else if (sort == "votes") {
+				result.sort(function(first, second) {
+					var firstVotes = first.voteCount;
+					var secondVotes = second.voteCount;
+					if (firstVotes == null) {
+						firstVotes = 0;
+					}
+					if (secondVotes == null) {
+						secondVotes = 0;
+					}
+					if (firstVotes < secondVotes) {
+						return 1;
+					} else if (firstVotes > secondVotes) {
+						return -1;
+					} else {
+						return 0;
+					}
+				});
+			}
+			if (request.user != null) {
+				response.render('viewblogs', {arr: result, vote: true});
+			} else {
+				response.render('viewblogs', {arr: result, vote: false});
+			}
+		});
+	});
+});
 
 app.get('/', (request, response) => {
     // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
