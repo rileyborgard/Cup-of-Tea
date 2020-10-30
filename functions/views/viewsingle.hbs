@@ -18,6 +18,14 @@
 {{#if downvote}}
     <a href="/viewsingle/{{blog._id}}/votedown">Downvote</a>
 {{/if}}
-
-
-
+<center>
+    <h2>Comments</h2>
+    <a href="/viewsingle/{{blog._id}}/writecomment">Write a Comment</a>
+</center>
+<ul>
+   {{#each comments}}
+     <h3> by: <a href="/user/{{this.author}}">{{this.author}}</a></h3>
+     <p> votes: {{this.voteCount}}</p>
+     <p> {{this.body}} </p>
+   {{/each}}
+</ul>

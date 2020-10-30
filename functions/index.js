@@ -96,7 +96,8 @@ passport.deserializeUser((id, done) => {
 const flash = require('express-flash');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
-
+const bodyParser = require('body-parser');
+app.use(bodyParser());
 app.use(cookieParser('secret'));
 app.use(express.urlencoded({ extended: false }));
 app.use(flash());
@@ -110,6 +111,21 @@ app.use((request, response, next) => {
 });
 
 // Routes
+
+app.get('/viewsingle/:blogid/writecomment/', (request, response) => {
+    if(request.user) {
+        getBlogById(request.params.blogid, async (err, blog) => {
+            if (err || blog == null) {
+                request.flash('error', 'could not find blog');
+                return response.redirect('/');
+             }
+            response.render('writecomment', {blog : blog});
+        });
+    } else {
+        request.flash('error', 'must be logged in to comment');
+        response.redirect('/login/');
+    }
+});
 
 app.get('/writeblog/', (request, response) => {
     // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
@@ -163,21 +179,58 @@ const getBlogByTopic = async (topicname, callback) => {
 	}
 }
 
+const getComments = async (id, callback) => {
+        try {
+            MongoClient.connect(mongoURL, (err, db) => {
+                if(err) throw err;
+                var dbo = db.db("teapotdb");
+                dbo.collection("comments").find({"blogid": id}).toArray(function(err, res) {
+                    if (res.length > 0) {
+                        console.log("more than 1");
+                    }
+                    db.close();
+                    return callback(null, res);
+                });
+            });
+        } catch (err) {
+            return callback(err, null);
+        }
+}
+
 app.get('/viewsingle/:blogid/', (request, response) => {
 	const blogid = request.params.blogid;
+    
     getBlogById(blogid, async (err, result) => {
         if (err || result == null) {
             request.flash('error', 'could not find blog');
             return response.redirect('/');
         }
         if(request.user != null && request.user.username == result.author) {
-            response.render('viewsingle', {blog: result, editbutton: true, savebutton: true});
+            getComments(blogid, async (err, res) => {
+                if (err || res == null) {
+                    request.flash('error', 'could not find blog');
+                    return response.redirect('/');
+                }
+                response.render('viewsingle', {blog: result, editbutton: true, comments : res});
+            });
         }
         else if(request.user != null && request.user.username != null && request.user.username != result.author) {
-            response.render('viewsingle', {blog: result, upvote: true, downvote: true, savebutton: true});
+            getComments(blogid, async (err, res) => {
+                if (err || res == null) {
+                    request.flash('error', 'could not find blog');
+                    return response.redirect('/');
+                }
+                response.render('viewsingle', {blog: result, upvote: true, downvote: true, comments : res});
+            });
         }
         else {
-            response.render('viewsingle', {blog: result});
+            getComments(blogid, async (err, res) => {
+                if (err || res == null) {
+                    request.flash('error', 'could not find blog');
+                    return response.redirect('/');
+                }
+                response.render('viewsingle', {blog: result, comments : res});
+            });
         }
     });
 });
@@ -289,6 +342,40 @@ app.get('/logout/', (request, response) => {
     request.logout();
     response.redirect('/');
 });
+
+app.post('/postcomment/:blogid/', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to comment');
+        return response.redirect('/login/');
+    }
+    var commentObject = request.body;
+    commentObject.anon = request.body.anon;
+    if (commentObject.anon = 'on') {
+       commentObject.author = "anonymous";
+    }
+    else {
+        commentObject.author = request.user.username;
+    }
+    commentObject.voteCount = 0;
+    commentObject.blogid = request.params.blogid;
+    console.log(commentObject);
+    try {
+        MongoClient.connect(mongoURL, (err, db) => {
+            if(err) throw err;
+            var dbo = db.db("teapotdb");
+            dbo.collection("comments").insertOne(commentObject, (err, res) => {
+                if(err) throw err;
+                console.log("1 comment inserted to database");
+                db.close();
+                return response.redirect('/viewsingle/' + commentObject.blogid);
+            });
+        });
+    }catch {
+        request.flash('error', 'Error posting comment');
+        response.redirect('/viewsingle/' + blogid);
+    }
+});
+
 
 app.post('/postblog/', (request, response) => {
     if(request.user == null) {
