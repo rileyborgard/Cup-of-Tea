@@ -163,6 +163,21 @@ const getBlogById = async (id, callback) => {
 		return callback(err, null);
 	}
 }
+const getBlogByTopic = async (topicname, callback) => {
+	try {
+		MongoClient.connect(mongoURL, (err, db) => {
+			if (err) throw err;
+			var dbo = db.db("teapotdb");
+			dbo.collection("blogs").findOne({topic: topicname }, (err, res) => {
+				if (err) throw err;
+				db.close();
+				return callback(null, res);
+			});
+		});
+	} catch (err) {
+		return callback(err, null);
+	}
+}
 
 const getComments = async (id, callback) => {
         try {
@@ -220,6 +235,56 @@ app.get('/viewsingle/:blogid/', (request, response) => {
     });
 });
 
+app.get('/topic/:topicname/', (request, response) => {
+    const topicname = request.params.topicname;
+    getBlogByTopic(topicname, async (err, result) => {
+        if(err || result == null) {
+            request.flash('error', 'could not find blog');
+            return response.redirect('/');
+        }else {
+            response.redirect('/viewsingle/' + result._id.toString());
+        }
+    });
+});
+
+app.get('/timeline/:sorttype/', (request, response) => {
+	const sort = request.params.sorttype;
+	MongoClient.connect(mongoURL, (err, db) => {
+		if (err) throw err;
+		var dbo = db.db("teapotdb");
+		dbo.collection("blogs").find().toArray((err, result) => {
+			/*result.forEach((item, index) => {
+				console.log(item);
+			});*/
+			if (sort == "time") {
+				result.reverse();
+			} else if (sort == "votes") {
+				result.sort(function(first, second) {
+					var firstVotes = first.voteCount;
+					var secondVotes = second.voteCount;
+					if (firstVotes == null) {
+						firstVotes = 0;
+					}
+					if (secondVotes == null) {
+						secondVotes = 0;
+					}
+					if (firstVotes < secondVotes) {
+						return 1;
+					} else if (firstVotes > secondVotes) {
+						return -1;
+					} else {
+						return 0;
+					}
+				});
+			}
+			if (request.user != null) {
+				response.render('viewblogs', {arr: result, vote: true});
+			} else {
+				response.render('viewblogs', {arr: result, vote: false});
+			}
+		});
+	});
+});
 
 app.get('/', (request, response) => {
     // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
@@ -433,6 +498,76 @@ app.get('/viewsingle/:blogid/votedown', (request, response) => {
     }
 });
 
+app.get('/viewsingle/:blogid/save', (request, response) => {
+	try {
+		var blogid = request.params.blogid;
+		getBlogById(blogid, async (err, blog) => {
+			if (err || blog == null) {
+				request.flash('error', 'could not find blog');
+				return response.redirect('/');
+			}
+			MongoClient.connect(mongoURL, (err, db) => {
+				if (err) throw err;
+				var dbo = db.db("teapotdb");
+				getUserByUsername(request.user.username, async(err, user) => {
+					if (user.saved == null) {
+						dbo.collection("users").updateOne({username: request.user.username}, {$set: {saved: [blog]}}, (err, res) => {
+							if (err) throw err;
+							request.flash('info', "Blog saved");
+							response.redirect('/viewsingle/' + blogid);
+						});
+					} else {
+						dbo.collection("users").updateOne({username: request.user.username}, {$push: {saved: blog}}, (err, res) => {
+							if (err) throw err;
+							request.flash('info', 'Blog saved');
+							response.redirect('/viewsingle/' + blogid);
+						});
+					}
+				});
+			});
+		});
+	} catch {
+		request.flash('error', "Error saving blog");
+		response.redirect('/');
+	}
+});
+
+app.get('/viewsingle/:blogid/unsave', (request, response) => {
+	try {
+		var blogid = request.params.blogid;
+		getBlogById(blogid, async (err, blog) => {
+			if (err || blog == null) {
+				request.flash('error', 'could not find blog');
+				return response.redirect('/saved/');
+			}
+			MongoClient.connect(mongoURL, (err, db) => {
+				if (err) throw err;
+				var dbo = db.db("teapotdb");
+				getUserByUsername(request.user.username, async (err, user) => {
+					dbo.collection("users").updateOne({username: request.user.username}, {$pull: {saved: blog}}, (err, res) => {
+						if (err) throw err;
+						request.flash('info', "Blog unsaved");
+						response.redirect('/viewsingle/' + blogid);
+					});
+				});
+			});
+		});
+	} catch {
+		request.flash('error', "Error unsaving blog");
+		response.redirect("/saved/");
+	}
+});
+
+app.get('/saved/', (request, response) => {
+	getUserByUsername(request.user.username, (err, user) => {
+		if (err || user == null) {
+			request.flash('error', 'Please login first');
+			return response.redirect('/login/');
+		} else {
+			response.render('saved', {arr: user.saved});
+		}
+	});
+});
 
 app.post('/postregister', async (request, response) => {
     var userObject = request.body;
