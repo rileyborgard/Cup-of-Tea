@@ -351,8 +351,24 @@ app.get('/follow/:username', (request, response) => {
         request.flash('error', 'must be logged in to see notifications');
         return response.redirect('/login/');
     }
-    // TODO: make sure the user is followed in the database
-    response.redirect('/user/' + request.params.username);
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { username: request.user.username };
+        var newvals = { $addToSet: { following_users: request.params.username }};
+        dbo.collection('users').updateOne(query, newvals, (err, res) => {
+            if(err) throw err;
+            console.log("added to following list");
+            var query2 = { username: request.params.username };
+            var newvals2 = { $addToSet: { followers: request.user.username }};
+            dbo.collection('users').updateOne(query2, newvals2, (err, res) => {
+                if(err) throw err;
+                console.log("added to followers list");
+                db.close();
+                response.redirect('/user/' + request.params.username);
+            });
+        });
+    });
 });
 
 app.get('/logout/', (request, response) => {
