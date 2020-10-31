@@ -93,6 +93,32 @@ passport.deserializeUser((id, done) => {
     });
 });
 
+const addToHistory = async (username, type, blogid, callback) {
+	//username and type are strings
+	getUserByUsername(username, async (err, user) => {
+		if (err) return callback(err);
+		try {
+			MongoClient.connect(mongoURL, (err, db) => {
+				if (err) throw err;
+				var dbo = db.db("teapotdb");
+				if (user.history == null) {
+					dbo.collection("users").updateOne({username: username}, {$set: {history: [{blogid: type}]}}, (err, res) => {
+						if (err) throw err;
+						return callback (null);
+					}
+				} else {
+					dbo.collection("users").updateOne({username: username}, {$push: {history: {blogid: type}}}, (err, res) => {
+						if (err) throw err;
+						return callback (null);
+					}
+				}
+			});
+		} catch {
+			return callback(err);
+		}
+	});
+}
+
 const flash = require('express-flash');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
@@ -282,7 +308,8 @@ app.post('/postblog/', (request, response) => {
                 db.close();
                 console.log("blog:");
                 console.log(res.ops[0]._id.toString());
-                return response.redirect('/viewsingle/' + res.ops[0]._id.toString());
+                
+		return response.redirect('/viewsingle/' + res.ops[0]._id.toString());
             });
         });
     }catch {
