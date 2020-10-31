@@ -338,6 +338,14 @@ app.get('/edit/:blogid', (request, response) => {
     });
 });
 
+app.get('/notifications/', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to see notifications');
+        return response.redirect('/login/');
+    }
+    response.render('notifications');
+});
+
 app.get('/logout/', (request, response) => {
     request.logout();
     response.redirect('/');
