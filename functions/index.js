@@ -346,6 +346,15 @@ app.get('/notifications/', (request, response) => {
     response.render('notifications');
 });
 
+app.get('/follow/:username', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to see notifications');
+        return response.redirect('/login/');
+    }
+    // TODO: make sure the user is followed in the database
+    response.redirect('/user/' + request.params.username);
+});
+
 app.get('/logout/', (request, response) => {
     request.logout();
     response.redirect('/');
