@@ -311,12 +311,17 @@ app.get('/user/:username', (request, response) => {
             request.flash('error', 'User not found');
             return response.redirect('/');
         }
+        var params = { username: user.username };
         if(request.user != null && request.user.username == user.username) {
             // only display private information if that user is the one viewing
-            response.render('profile', { username: user.username, email: user.email });
-        }else {
-            response.render('profile', { username: user.username });
+            params.email = user.email;
         }
+        if(request.user != null && request.user.following_users != null && request.user.following_users.includes(username)) {
+            params.unfollowbutton = true;
+        }else if(request.user != null && request.user.username != username) {
+            params.followbutton = true;
+        }
+        response.render('profile', params);
     });
 });
 
@@ -348,7 +353,7 @@ app.get('/notifications/', (request, response) => {
 
 app.get('/follow/:username', (request, response) => {
     if(request.user == null) {
-        request.flash('error', 'must be logged in to see notifications');
+        request.flash('error', 'must be logged in to follow users');
         return response.redirect('/login/');
     }
     MongoClient.connect(mongoURL, (err, db) => {
@@ -364,6 +369,31 @@ app.get('/follow/:username', (request, response) => {
             dbo.collection('users').updateOne(query2, newvals2, (err, res) => {
                 if(err) throw err;
                 console.log("added to followers list");
+                db.close();
+                response.redirect('/user/' + request.params.username);
+            });
+        });
+    });
+});
+
+app.get('/unfollow/:username', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to unfollow users');
+        return response.redirect('/login/');
+    }
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { username: request.user.username };
+        var newvals = { $pull: { following_users: request.params.username }};
+        dbo.collection('users').updateOne(query, newvals, (err, res) => {
+            if(err) throw err;
+            console.log("removed from following list");
+            var query2 = { username: request.params.username };
+            var newvals2 = { $pull: { followers: request.user.username }};
+            dbo.collection('users').updateOne(query2, newvals2, (err, res) => {
+                if(err) throw err;
+                console.log("removed from followers list");
                 db.close();
                 response.redirect('/user/' + request.params.username);
             });
