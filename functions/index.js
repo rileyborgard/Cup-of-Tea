@@ -348,7 +348,12 @@ app.get('/notifications/', (request, response) => {
         request.flash('error', 'must be logged in to see notifications');
         return response.redirect('/login/');
     }
-    response.render('notifications');
+    notif_list = request.user.notifications;
+    if(notif_list == null) {
+        notif_list = [];
+    }
+    console.log(request.user);
+    response.render('notifications', { notif_list: notif_list });
 });
 
 app.get('/follow/:username', (request, response) => {
@@ -462,7 +467,9 @@ app.post('/postblog/', (request, response) => {
                 // add notification to everyone following request.user
                 var query = { following_users: { $in: [ request.user.username ] }};
                 var update = { $push: { notifications: {
-                    blogid: res.ops[0]._id
+                    blogid: res.ops[0]._id,
+                    title: blogObject.title,
+                    author: blogObject.author
                 }}};
                 dbo.collection("users").updateMany(query, update, (err, res2) => {
                     if(err) throw err;

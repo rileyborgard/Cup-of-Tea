@@ -1,9 +1,9 @@
 <h1>Notifications</h1>
 <ul>
+    {{#each notif_list}}
     <li>
-        <h2>Example 1</h2>
+        <h1><a href="/viewsingle/{{blogid}}">{{title}}</a></h1>
+        <p>by: <a href="/user/{{author}}">{{author}}</a></p>
     </li>
-    <li>
-        <h2>Example 2</h2>
-    </li>
+    {{/each}}
 </ul>
