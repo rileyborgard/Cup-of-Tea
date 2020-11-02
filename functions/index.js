@@ -456,10 +456,19 @@ app.post('/postblog/', (request, response) => {
             dbo.collection("blogs").insertOne(blogObject, (err, res) => {
                 if(err) throw err;
                 console.log("1 blog inserted to database");
-                db.close();
                 console.log("blog:");
                 console.log(res.ops[0]._id.toString());
-                return response.redirect('/viewsingle/' + res.ops[0]._id.toString());
+
+                // add notification to everyone following request.user
+                var query = { following_users: { $in: [ request.user.username ] }};
+                var update = { $push: { notifications: {
+                    blogid: res.ops[0]._id
+                }}};
+                dbo.collection("users").updateMany(query, update, (err, res2) => {
+                    if(err) throw err;
+                    db.close();
+                    return response.redirect('/viewsingle/' + res.ops[0]._id.toString());
+                });
             });
         });
     }catch {
