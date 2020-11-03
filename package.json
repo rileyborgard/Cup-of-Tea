@@ -12,6 +12,7 @@
   "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "./functions/node_modules/.bin/tslint -p tslint.json"
   },
   "author": "",
   "license": "ISC"

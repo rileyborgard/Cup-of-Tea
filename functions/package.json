@@ -13,11 +13,19 @@
   },
   "main": "index.js",
   "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.19.0",
     "consolidate": "^0.16.0",
+    "cookie-parser": "^1.4.5",
+    "express-flash": "0.0.2",
+    "express-handlebars": "^5.1.0",
+    "express-session": "^1.17.1",
     "firebase-admin": "^8.10.0",
     "firebase-functions": "^3.6.1",
     "handlebars": "^4.7.6",
-    "mongodb": "^3.6.2"
+    "lint": "^0.7.0",
+    "mongodb": "^3.6.2",
+    "passport": "^0.4.1"
   },
   "devDependencies": {
     "firebase-functions-test": "^0.2.0"
