@@ -235,17 +235,38 @@ app.get('/viewsingle/:blogid/', (request, response) => {
     });
 });
 
-app.get('/topic/:topicname/', (request, response) => {
-    const topicname = request.params.topicname;
-    getBlogByTopic(topicname, async (err, result) => {
-        if(err || result == null) {
-            request.flash('error', 'could not find blog');
-            return response.redirect('/');
-        }else {
-            response.redirect('/viewsingle/' + result._id.toString());
-        }
+app.get('/topic/:topic/', (request, response) => {
+    const topic = request.params.topic;
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { topic: topic };
+        dbo.collection('blogs').find(query).toArray((err, result) => {
+            if(err) throw err;
+            db.close();
+            console.log(result);
+            var params = { arr: result, topic: topic };
+            if(request.user != null && request.user.following_topics != null && request.user.following_topics.includes(topic)) {
+                params.unfollowbutton = true;
+            }else if(request.user != null) {
+                params.followbutton = true;
+            }
+            response.render('topic', params);
+        });
     });
 });
+
+// app.get('/topic/:topicname/', (request, response) => {
+//     const topicname = request.params.topicname;
+//     getBlogByTopic(topicname, async (err, result) => {
+//         if(err || result == null) {
+//             request.flash('error', 'could not find blog');
+//             return response.redirect('/');
+//         }else {
+//             response.redirect('/viewsingle/' + result._id.toString());
+//         }
+//     });
+// });
 
 app.get('/timeline/:sorttype/', (request, response) => {
 	const sort = request.params.sorttype;
