@@ -1,6 +1,15 @@
-<h1>Notifications</h1>
+<h1>Unread Notifications</h1>
 <ul>
     {{#each notif_list}}
+    <li>
+        <h1><a href="/viewsingle/{{blogid}}">{{title}}</a></h1>
+        <p>by: <a href="/user/{{author}}">{{author}}</a></p>
+    </li>
+    {{/each}}
+</ul>
+<h1>Old Notifications</h1>
+<ul>
+    {{#each read_list}}
     <li>
         <h1><a href="/viewsingle/{{blogid}}">{{title}}</a></h1>
         <p>by: <a href="/user/{{author}}">{{author}}</a></p>

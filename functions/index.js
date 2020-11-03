@@ -349,11 +349,29 @@ app.get('/notifications/', (request, response) => {
         return response.redirect('/login/');
     }
     notif_list = request.user.notifications;
+    read_list = request.user.read_notifications;
     if(notif_list == null) {
         notif_list = [];
     }
-    console.log(request.user);
-    response.render('notifications', { notif_list: notif_list });
+    if(read_list == null) {
+        read_list = [];
+    }
+    // move all notifications to read
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { username: request.user.username };
+        var update = {
+            $pullAll: { notifications: notif_list },
+            $push: { read_notifications: { $each: notif_list } }
+        };
+        dbo.collection('users').updateOne(query, update, (err, res) => {
+            if(err) throw err;
+            console.log("marked notifications as read");
+            db.close();
+            response.render('notifications', { notif_list: notif_list, read_list: read_list });
+        });
+    });
 });
 
 app.get('/follow/:username', (request, response) => {
