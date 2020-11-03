@@ -244,7 +244,6 @@ app.get('/topic/:topic/', (request, response) => {
         dbo.collection('blogs').find(query).toArray((err, result) => {
             if(err) throw err;
             db.close();
-            console.log(result);
             var params = { arr: result, topic: topic };
             if(request.user != null && request.user.following_topics != null && request.user.following_topics.includes(topic)) {
                 params.unfollowbutton = true;
@@ -391,6 +390,44 @@ app.get('/notifications/', (request, response) => {
             console.log("marked notifications as read");
             db.close();
             response.render('notifications', { notif_list: notif_list, read_list: read_list });
+        });
+    });
+});
+
+app.get('/followtopic/:topic', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to follow topics');
+        return response.redirect('/login/');
+    }
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { username: request.user.username };
+        var newvals = { $addToSet: { following_topics: request.params.topic }};
+        dbo.collection('users').updateOne(query, newvals, (err, res) => {
+            if(err) throw err;
+            console.log("added to following list");
+            db.close();
+            response.redirect('/topic/' + request.params.topic);
+        });
+    });
+});
+
+app.get('/unfollowtopic/:topic', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to unfollow topics');
+        return response.redirect('/login/');
+    }
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { username: request.user.username };
+        var newvals = { $pull: { following_topics: request.params.topic }};
+        dbo.collection('users').updateOne(query, newvals, (err, res) => {
+            if(err) throw err;
+            console.log("removed from following list");
+            db.close();
+            response.redirect('/topic/' + request.params.topic);
         });
     });
 });
