@@ -541,7 +541,12 @@ app.post('/postblog/', (request, response) => {
                 console.log(res.ops[0]._id.toString());
 
                 // add notification to everyone following request.user
-                var query = { following_users: { $in: [ request.user.username ] }};
+                var query = {
+                    $or: [
+                        { following_users: { $in: [ request.user.username ] }},
+                        { following_topics: { $in: [ blogObject.topic ] }}
+                    ]
+                };
                 var update = { $push: { notifications: {
                     blogid: res.ops[0]._id,
                     title: blogObject.title,
