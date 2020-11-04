@@ -370,6 +370,7 @@ app.get('/user/:username', (request, response) => {
         if(request.user != null && request.user.username == user.username) {
             // only display private information if that user is the one viewing
             params.email = user.email;
+            params.school = user.school;
         }
         if(request.user != null && request.user.following_users != null && request.user.following_users.includes(username)) {
             params.unfollowbutton = true;
@@ -387,7 +388,7 @@ app.get('/user/:username/edit', (request, response) => {
             request.flash('error', 'User not found');
             return response.redirect('/');
         }
-    response.render('editprofile', {user: user });
+        response.render('editprofile', {user: user });
     });
 });
 
@@ -430,13 +431,13 @@ app.get('/deleteuser/:username', (request, response) => {
                 var dbo = db.db("teapotdb");
                 var myQuery = { username: username };
                 
-                dbo.collection('users').deleteOne(myQuery, (err, db) => {
+                dbo.collection('users').deleteOne(myQuery, (err, res) => {
                     if(err) throw err;
                     console.log("User deleted ");
-                    db.close();                  
+                    db.close();
+                    return response.redirect('/');
                 });
             });
-            response.redirect('/');
         });
     }catch {
         // throw e;
@@ -729,13 +730,17 @@ app.post('/postblogedit/:blogid', (request, response) => {
 
 app.post('/postprofile/', async(request, response) => {
     try {
+        if(request.user == null) {
+            request.flash('error', 'must be logged in to edit profile');
+            return response.redirect('/login/');
+        }
         var userObject = request.body;
         console.log(request.body);
-        userObject.password = await bcrypt.hash(userObject.password, 10);
+        // userObject.password = await bcrypt.hash(userObject.password, 10);
         MongoClient.connect(mongoURL, (err, db) => {
             if(err) throw err;
             var dbo = db.db("teapotdb");
-            var query = { _id: ObjectId(userObject._id) };
+            var query = { username: request.user.username };
             var newvals = { $set : { school: userObject.school, firstName: userObject.firstName, 
                             lastName: userObject.lastName, emailShow: userObject.emailShow, 
                             schoolShow: userObject.schoolShow, firstNameShow: userObject.firstNameShow,
@@ -745,10 +750,11 @@ app.post('/postprofile/', async(request, response) => {
                 console.log("1 user profile updated.");
                 request.flash('info', 'Profile updated.');
                 db.close();
-                response.redirect('/user/' + userObject.username);
+                response.redirect('/user/' + request.user.username);
             });
         });
-    }catch {
+    }catch(e) {
+        console.log(e);
         console.log('error editing profile, redirecting to login.');
         response.redirect('/login/');
     }
