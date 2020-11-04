@@ -380,6 +380,17 @@ app.get('/user/:username', (request, response) => {
     });
 });
 
+app.get('/user/:username/edit', (request, response) => {
+    const username = request.params.username;
+    getUserByUsername(username, (err, user) => {
+        if(err || user == null) {
+            request.flash('error', 'User not found');
+            return response.redirect('/');
+        }
+    response.render('editprofile', {user: user });
+    });
+});
+
 app.get('/edit/:blogid', (request, response) => {
     if(request.user == null) {
         request.flash('error', 'must be logged in');
@@ -716,6 +727,33 @@ app.post('/postblogedit/:blogid', (request, response) => {
     }
 });
 
+app.post('/postprofile/', async(request, response) => {
+    try {
+        var userObject = request.body;
+        console.log(request.body);
+        userObject.password = await bcrypt.hash(userObject.password, 10);
+        MongoClient.connect(mongoURL, (err, db) => {
+            if(err) throw err;
+            var dbo = db.db("teapotdb");
+            var query = { _id: ObjectId(userObject._id) };
+            var newvals = { $set : { school: userObject.school, firstName: userObject.firstName, 
+                            lastName: userObject.lastName, emailShow: userObject.emailShow, 
+                            schoolShow: userObject.schoolShow, firstNameShow: userObject.firstNameShow,
+                            lastNameShow: userObject.lastNameShow }};
+            dbo.collection('users').updateOne(query, newvals, (err, res) => {
+                if(err) throw err;
+                console.log("1 user profile updated.");
+                request.flash('info', 'Profile updated.');
+                db.close();
+                response.redirect('/user/' + userObject.username);
+            });
+        });
+    }catch {
+        console.log('error editing profile, redirecting to login.');
+        response.redirect('/login/');
+    }
+});
+
 app.get('/viewsingle/:blogid/voteup', (request, response) => {
     try {
         var blogid = request.params.blogid;
@@ -845,6 +883,8 @@ app.get('/saved/', (request, response) => {
 
 app.post('/postregister', async (request, response) => {
     var userObject = request.body;
+    userObject.firstName = "";
+    userObject.lastName = "";
     // TODO: validate user object
     try {
         userObject.password = await bcrypt.hash(userObject.password, 10);
