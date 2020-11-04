@@ -11,6 +11,7 @@
             {{#if req.user}}
                 <a href="/logout/">Logout</a>
                 <a href="/user/{{req.user.username}}">{{req.user.username}}</a>
+                <a href="/schools/{{req.user.school}}">{{req.user.school}}</a>
                 <a href="/notifications/">Notifications</a>
             {{else}}
                 <a href="/login/">Login</a>
