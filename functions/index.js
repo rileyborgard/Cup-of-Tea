@@ -148,6 +148,7 @@ const getBlogById = async (id, callback) => {
 	}
 }
 
+
 app.get('/viewsingle/:blogid/', (request, response) => {
 	const blogid = request.params.blogid;
     getBlogById(blogid, async (err, result) => {
@@ -218,6 +219,80 @@ app.get('/edit/:blogid', (request, response) => {
         }
         response.render('editblog', { blog: blog });
     });
+});
+
+
+app.get('/deleteuser/:username', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'User must be logged in');
+        return response.redirect('/login/');
+    }
+    try {
+        const username = request.params.username;
+        getUserByUsername(username, (err, user) => {
+            if(err || user == null) {
+                request.flash('error', 'User not found');
+                return response.redirect('/');
+            }
+            if(request.user.username != username) {
+                request.flash('error', 'You don\'t have permission to delete this account');
+                return response.redirect('/');
+            }
+            MongoClient.connect(mongoURL, (err, db) => {
+                if(err) throw err;
+                var dbo = db.db("teapotdb");
+                var myQuery = { username: username };
+                
+                dbo.collection('users').deleteOne(myQuery, (err, db) => {
+                    if(err) throw err;
+                    console.log("User deleted ");
+                    db.close();                  
+                });
+            });
+            response.redirect('/');
+        });
+    }catch {
+        // throw e;
+        request.flash('error', 'Error delete user');
+        response.redirect('/');
+    }
+});
+
+
+app.get('/deleteblog/:blogid', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in');
+        return response.redirect('/login/');
+    }
+    try {
+        var blogid = request.params.blogid;
+        getBlogById(blogid, async (err, blog) => {
+            if(err || blog == null) {
+                request.flash('error', 'Blog not found');
+                return response.redirect('/');
+            }
+            if(blog.author != request.user.username) {
+                request.flash('error', 'You don\'t have permission to edit this blog');
+                return response.redirect('/');
+            }
+            MongoClient.connect(mongoURL, (err, db) => {
+                if(err) throw err;
+                var dbo = db.db("teapotdb");
+                var myQuery = { _id: ObjectId(blogid) };
+                
+                dbo.collection('blogs').deleteOne(myQuery, (err, db) => {
+                    if(err) throw err;
+                    console.log("1 blog deleted ");
+                    db.close();                  
+                });
+            });
+            response.redirect('/');
+        });
+    }catch {
+        // throw e;
+        request.flash('error', 'Error delete blog');
+        response.redirect('/');
+    }
 });
 
 app.get('/logout/', (request, response) => {

@@ -15,5 +15,21 @@
     <a href="/viewsingle/{{blog._id}}/votedown">Downvote</a>
 {{/if}}
 
+{{#if deletebutton}}
+    <a href="/deleteblog/{{blog._id}}">Delete</a>
+{{/if}}
+
+<form method="delete" action="/deleteblog/{{blog._id}}" onclick="return ConfirmDelete()">  
+        <input type="submit" value="Delete"  />
+    </form>
+    
 
 
+<script type="text/javascript">
+function ConfirmDelete() { 
+    if (confirm("Delete post?")) {
+        return true;
+    }
+    return false;
+}
+</script>
