@@ -93,6 +93,32 @@ passport.deserializeUser((id, done) => {
     });
 });
 
+const addToHistory = async (username, type, blogid, callback) => {
+	//username and type are strings
+	getUserByUsername(username, async (err, user) => {
+		if (err) return callback(err);
+		try {
+			MongoClient.connect(mongoURL, (err, db) => {
+				if (err) throw err;
+				var dbo = db.db("teapotdb");
+				if (user.history == null) {
+					dbo.collection("users").updateOne({username: username}, {$set: {history: [{blogid: blogid, type: type}]}}, (err, res) => {
+						if (err) throw err;
+						return callback (null);
+					});
+				} else {
+					dbo.collection("users").updateOne({username: username}, {$push: {history: {blogid: blogid, type: type}}}, (err, res) => {
+						if (err) throw err;
+						return callback (null);
+					});
+				}
+			});
+		} catch {
+			return callback(err);
+		}
+	});
+}
+
 const flash = require('express-flash');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
@@ -207,21 +233,29 @@ app.get('/viewsingle/:blogid/', (request, response) => {
             return response.redirect('/');
         }
         if(request.user != null && request.user.username == result.author) {
-            getComments(blogid, async (err, res) => {
-                if (err || res == null) {
-                    request.flash('error', 'could not find blog');
-                    return response.redirect('/');
-                }
-                response.render('viewsingle', {blog: result, editbutton: true, comments : res});
+
+            addToHistory(request.user.username, "viewed", blogid, (err) => {
+                if (err) throw err;
+                
+                getComments(blogid, async (err, res) => {
+                    if (err || res == null) {
+                        request.flash('error', 'could not find blog');
+                        return response.redirect('/');
+                    }
+                    response.render('viewsingle', {blog: result, editbutton: true, comments : res, savebutton: true});
+                });
             });
         }
         else if(request.user != null && request.user.username != null && request.user.username != result.author) {
-            getComments(blogid, async (err, res) => {
-                if (err || res == null) {
-                    request.flash('error', 'could not find blog');
-                    return response.redirect('/');
-                }
-                response.render('viewsingle', {blog: result, upvote: true, downvote: true, comments : res});
+            addToHistory(request.user.username, "viewed", blogid, (err) => {
+                if (err) throw err;
+                getComments(blogid, async (err, res) => {
+                    if (err || res == null) {
+                        request.flash('error', 'could not find blog');
+                        return response.redirect('/');
+                    }
+                    response.render('viewsingle', {blog: result, upvote: true, downvote: true, comments : res, savebutton: true});
+                });
             });
         }
         else {
@@ -628,8 +662,11 @@ app.post('/postblog/', (request, response) => {
                 }}};
                 dbo.collection("users").updateMany(query, update, (err, res2) => {
                     if(err) throw err;
-                    db.close();
-                    return response.redirect('/viewsingle/' + res.ops[0]._id.toString());
+                  
+                    addToHistory(request.user.username, "posted", res.ops[0]._id, (err) => {
+                        db.close();
+                        return response.redirect('/viewsingle/' + res.ops[0]._id.toString());
+                    });
                 });
             });
         });
@@ -661,11 +698,14 @@ app.post('/postblogedit/:blogid', (request, response) => {
                 var query = { _id: ObjectId(blogid) };
                 var newvals = { $set: { title: request.body.title, body: request.body.body }};
                 dbo.collection('blogs').updateOne(query, newvals, (err, res) => {
-                    if(err) throw err;
-                    console.log("1 blog updated");
-                    db.close();
-                    request.flash('info', 'Blog updated');
-                    response.redirect('/viewsingle/' + blogid)
+			if(err) throw err;
+                    	console.log("1 blog updated");
+                  	db.close();
+			request.flash('info', 'Blog updated');
+			addToHistory(request.user.username, "edited", blogid, (err) => {
+                    		if (err) throw err;
+				response.redirect('/viewsingle/' + blogid)
+			});
                 });
             });
         });
