@@ -235,17 +235,37 @@ app.get('/viewsingle/:blogid/', (request, response) => {
     });
 });
 
-app.get('/topic/:topicname/', (request, response) => {
-    const topicname = request.params.topicname;
-    getBlogByTopic(topicname, async (err, result) => {
-        if(err || result == null) {
-            request.flash('error', 'could not find blog');
-            return response.redirect('/');
-        }else {
-            response.redirect('/viewsingle/' + result._id.toString());
-        }
+app.get('/topic/:topic/', (request, response) => {
+    const topic = request.params.topic;
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { topic: topic };
+        dbo.collection('blogs').find(query).toArray((err, result) => {
+            if(err) throw err;
+            db.close();
+            var params = { arr: result, topic: topic };
+            if(request.user != null && request.user.following_topics != null && request.user.following_topics.includes(topic)) {
+                params.unfollowbutton = true;
+            }else if(request.user != null) {
+                params.followbutton = true;
+            }
+            response.render('topic', params);
+        });
     });
 });
+
+// app.get('/topic/:topicname/', (request, response) => {
+//     const topicname = request.params.topicname;
+//     getBlogByTopic(topicname, async (err, result) => {
+//         if(err || result == null) {
+//             request.flash('error', 'could not find blog');
+//             return response.redirect('/');
+//         }else {
+//             response.redirect('/viewsingle/' + result._id.toString());
+//         }
+//     });
+// });
 
 app.get('/timeline/:sorttype/', (request, response) => {
 	const sort = request.params.sorttype;
@@ -311,12 +331,17 @@ app.get('/user/:username', (request, response) => {
             request.flash('error', 'User not found');
             return response.redirect('/');
         }
+        var params = { username: user.username };
         if(request.user != null && request.user.username == user.username) {
             // only display private information if that user is the one viewing
-            response.render('profile', { username: user.username, email: user.email });
-        }else {
-            response.render('profile', { username: user.username });
+            params.email = user.email;
         }
+        if(request.user != null && request.user.following_users != null && request.user.following_users.includes(username)) {
+            params.unfollowbutton = true;
+        }else if(request.user != null && request.user.username != username) {
+            params.followbutton = true;
+        }
+        response.render('profile', params);
     });
 });
 
@@ -335,6 +360,125 @@ app.get('/edit/:blogid', (request, response) => {
             return response.redirect('/');
         }
         response.render('editblog', { blog: blog });
+    });
+});
+
+app.get('/notifications/', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to see notifications');
+        return response.redirect('/login/');
+    }
+    notif_list = request.user.notifications;
+    read_list = request.user.read_notifications;
+    if(notif_list == null) {
+        notif_list = [];
+    }
+    if(read_list == null) {
+        read_list = [];
+    }
+    // move all notifications to read
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { username: request.user.username };
+        var update = {
+            $pullAll: { notifications: notif_list },
+            $push: { read_notifications: { $each: notif_list } }
+        };
+        dbo.collection('users').updateOne(query, update, (err, res) => {
+            if(err) throw err;
+            console.log("marked notifications as read");
+            db.close();
+            response.render('notifications', { notif_list: notif_list, read_list: read_list });
+        });
+    });
+});
+
+app.get('/followtopic/:topic', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to follow topics');
+        return response.redirect('/login/');
+    }
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { username: request.user.username };
+        var newvals = { $addToSet: { following_topics: request.params.topic }};
+        dbo.collection('users').updateOne(query, newvals, (err, res) => {
+            if(err) throw err;
+            console.log("added to following list");
+            db.close();
+            response.redirect('/topic/' + request.params.topic);
+        });
+    });
+});
+
+app.get('/unfollowtopic/:topic', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to unfollow topics');
+        return response.redirect('/login/');
+    }
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { username: request.user.username };
+        var newvals = { $pull: { following_topics: request.params.topic }};
+        dbo.collection('users').updateOne(query, newvals, (err, res) => {
+            if(err) throw err;
+            console.log("removed from following list");
+            db.close();
+            response.redirect('/topic/' + request.params.topic);
+        });
+    });
+});
+
+app.get('/follow/:username', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to follow users');
+        return response.redirect('/login/');
+    }
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { username: request.user.username };
+        var newvals = { $addToSet: { following_users: request.params.username }};
+        dbo.collection('users').updateOne(query, newvals, (err, res) => {
+            if(err) throw err;
+            console.log("added to following list");
+            var query2 = { username: request.params.username };
+            var newvals2 = { $addToSet: { followers: request.user.username }};
+            dbo.collection('users').updateOne(query2, newvals2, (err, res) => {
+                if(err) throw err;
+                console.log("added to followers list");
+                db.close();
+                response.redirect('/user/' + request.params.username);
+            });
+        });
+    });
+});
+
+app.get('/unfollow/:username', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to unfollow users');
+        return response.redirect('/login/');
+    }
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { username: request.user.username };
+        var newvals = { $pull: { following_users: request.params.username }};
+        dbo.collection('users').updateOne(query, newvals, (err, res) => {
+            if(err) throw err;
+            console.log("removed from following list");
+            var query2 = { username: request.params.username };
+            var newvals2 = { $pull: { followers: request.user.username }};
+            dbo.collection('users').updateOne(query2, newvals2, (err, res) => {
+                if(err) throw err;
+                console.log("removed from followers list");
+                db.close();
+                response.redirect('/user/' + request.params.username);
+            });
+        });
     });
 });
 
@@ -393,10 +537,26 @@ app.post('/postblog/', (request, response) => {
             dbo.collection("blogs").insertOne(blogObject, (err, res) => {
                 if(err) throw err;
                 console.log("1 blog inserted to database");
-                db.close();
                 console.log("blog:");
                 console.log(res.ops[0]._id.toString());
-                return response.redirect('/viewsingle/' + res.ops[0]._id.toString());
+
+                // add notification to everyone following request.user
+                var query = {
+                    $or: [
+                        { following_users: { $in: [ request.user.username ] }},
+                        { following_topics: { $in: [ blogObject.topic ] }}
+                    ]
+                };
+                var update = { $push: { notifications: {
+                    blogid: res.ops[0]._id,
+                    title: blogObject.title,
+                    author: blogObject.author
+                }}};
+                dbo.collection("users").updateMany(query, update, (err, res2) => {
+                    if(err) throw err;
+                    db.close();
+                    return response.redirect('/viewsingle/' + res.ops[0]._id.toString());
+                });
             });
         });
     }catch {
