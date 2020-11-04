@@ -93,7 +93,7 @@ passport.deserializeUser((id, done) => {
     });
 });
 
-const addToHistory = async (username, type, blogid, callback) => {
+const addToHistory = async (username, type, blog, callback) => {
 	//username and type are strings
 	getUserByUsername(username, async (err, user) => {
 		if (err) return callback(err);
@@ -102,12 +102,12 @@ const addToHistory = async (username, type, blogid, callback) => {
 				if (err) throw err;
 				var dbo = db.db("teapotdb");
 				if (user.history == null) {
-					dbo.collection("users").updateOne({username: username}, {$set: {history: [{blogid: blogid, type: type}]}}, (err, res) => {
+					dbo.collection("users").updateOne({username: username}, {$set: {history: [{blog: blog, type: type}]}}, (err, res) => {
 						if (err) throw err;
 						return callback (null);
 					});
 				} else {
-					dbo.collection("users").updateOne({username: username}, {$push: {history: {blogid: blogid, type: type}}}, (err, res) => {
+					dbo.collection("users").updateOne({username: username}, {$push: {history: {blog: blog, type: type}}}, (err, res) => {
 						if (err) throw err;
 						return callback (null);
 					});
@@ -182,13 +182,13 @@ app.get('/viewsingle/:blogid/', (request, response) => {
             return response.redirect('/');
         }
         if(request.user != null && request.user.username == result.author) {
-            	addToHistory(request.user.username, "viewed", blogid, (err) => {
+            	addToHistory(request.user.username, "viewed", result, (err) => {
 			if (err) throw err;
 			response.render('viewsingle', {blog: result, editbutton: true, savebutton: true});
 		});
         }
         else if(request.user != null && request.user.username != null && request.user.username != result.author) {
-        	addToHistory(request.user.username, "viewed", blogid, (err) => {
+        	addToHistory(request.user.username, "viewed", result, (err) => {
 			if (err) throw err;
 			response.render('viewsingle', {blog: result, upvote: true, downvote: true, savebutton: true});
 		});
@@ -235,6 +235,19 @@ app.get('/timeline/:sorttype/', (request, response) => {
 				response.render('viewblogs', {arr: result, vote: false});
 			}
 		});
+	});
+});
+
+app.get('/history/', (request, response) => {
+	MongoClient.connect(mongoURL, (err, db) => {
+		if (err) throw err;
+		var dbo = db.db("teapotdb");
+		if (request.user == null) {
+			request.flash('error', 'You must be logged in to view your history');
+			response.redirect('/');
+		} else {
+			response.render('history', {history: request.user.history});
+		}
 	});
 });
 
@@ -314,7 +327,7 @@ app.post('/postblog/', (request, response) => {
                 db.close();
                 console.log("blog:");
                 console.log(res.ops[0]._id.toString());
-                addToHistory(request.user.username, "posted", res.ops[0]._id, (err) => {
+                addToHistory(request.user.username, "posted", res.ops[0], (err) => {
 			return response.redirect('/viewsingle/' + res.ops[0]._id.toString());
 		});
 			//return response.redirect('/viewsingle/' + res.ops[0]._id.toString());
@@ -353,7 +366,7 @@ app.post('/postblogedit/:blogid', (request, response) => {
                     	console.log("1 blog updated");
                   	db.close();
 			request.flash('info', 'Blog updated');
-			addToHistory(request.user.username, "edited", blogid, (err) => {
+			addToHistory(request.user.username, "edited", blog, (err) => {
                     		if (err) throw err;
 				response.redirect('/viewsingle/' + blogid)
 			});
