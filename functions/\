@@ -219,7 +219,7 @@ const getUsersBySchool = async (school, callback) => {
     }catch(err) {
         return callback(err, null);
     }
-}
+});
 
 const getComments = async (id, callback) => {
         try {
@@ -388,7 +388,7 @@ app.get('/login/', (request, response) => {
 });
 
 app.get('/schools/:school', (request, response) => {
-    const school = request.params.school;
+    var users;
     getUsersBySchool(school, (err, res) => {
         if(err) throw err;
         response.render('school', {users: res});
