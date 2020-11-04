@@ -626,12 +626,7 @@ app.post('/postcomment/:blogid/', (request, response) => {
     }
     var commentObject = request.body;
     commentObject.anon = request.body.anon;
-    if (commentObject.anon = 'on') {
-       commentObject.author = "anonymous";
-    }
-    else {
-        commentObject.author = request.user.username;
-    }
+    commentObject.author = request.user.username;
     commentObject.voteCount = 0;
     commentObject.blogid = request.params.blogid;
     console.log(commentObject);
