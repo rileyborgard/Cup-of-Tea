@@ -5,6 +5,7 @@
 <p> By: <a href="/user/{{blog.author}}">{{blog.author}}</a></p>
 <p>{{blog.body}}</p>
 <p>Votes: {{blog.voteCount}}</p>
+<p>Topic: {{blog.topic}}</p>
 {{#if editbutton}}
 	<a href="/edit/{{blog._id}}">Edit</a>
 {{/if}}
@@ -18,5 +19,31 @@
     <a href="/viewsingle/{{blog._id}}/votedown">Downvote</a>
 {{/if}}
 
+{{#if deletebutton}}
+    <a href="/deleteblog/{{blog._id}}">Delete</a>
+{{/if}}
 
+<form method="delete" action="/deleteblog/{{blog._id}}" onclick="return ConfirmDelete()">  
+    <input type="submit" value="Delete"  />
+</form>
 
+<script type="text/javascript">
+function ConfirmDelete() { 
+    if (confirm("Delete post?")) {
+        return true;
+    }
+    return false;
+}
+</script>
+
+<center>
+    <h2>Comments</h2>
+    <a href="/viewsingle/{{blog._id}}/writecomment">Write a Comment</a>
+</center>
+<ul>
+   {{#each comments}}
+     <h3> by: <a href="/user/{{this.author}}">{{this.author}}</a></h3>
+     <p> votes: {{this.voteCount}}</p>
+     <p> {{this.body}} </p>
+   {{/each}}
+</ul>
