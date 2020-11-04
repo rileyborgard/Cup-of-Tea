@@ -122,7 +122,8 @@ const addToHistory = async (username, type, blog, callback) => {
 const flash = require('express-flash');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
-
+const bodyParser = require('body-parser');
+app.use(bodyParser());
 app.use(cookieParser('secret'));
 app.use(express.urlencoded({ extended: false }));
 app.use(flash());
@@ -136,6 +137,21 @@ app.use((request, response, next) => {
 });
 
 // Routes
+
+app.get('/viewsingle/:blogid/writecomment/', (request, response) => {
+    if(request.user) {
+        getBlogById(request.params.blogid, async (err, blog) => {
+            if (err || blog == null) {
+                request.flash('error', 'could not find blog');
+                return response.redirect('/');
+             }
+            response.render('writecomment', {blog : blog});
+        });
+    } else {
+        request.flash('error', 'must be logged in to comment');
+        response.redirect('/login/');
+    }
+});
 
 app.get('/writeblog/', (request, response) => {
     // response.set('Cache-control', 'public, max-age=300, s-maxage=600');
@@ -173,31 +189,117 @@ const getBlogById = async (id, callback) => {
 		return callback(err, null);
 	}
 }
+const getBlogByTopic = async (topicname, callback) => {
+	try {
+		MongoClient.connect(mongoURL, (err, db) => {
+			if (err) throw err;
+			var dbo = db.db("teapotdb");
+			dbo.collection("blogs").findOne({topic: topicname }, (err, res) => {
+				if (err) throw err;
+				db.close();
+				return callback(null, res);
+			});
+		});
+	} catch (err) {
+		return callback(err, null);
+	}
+}
+
+const getComments = async (id, callback) => {
+        try {
+            MongoClient.connect(mongoURL, (err, db) => {
+                if(err) throw err;
+                var dbo = db.db("teapotdb");
+                dbo.collection("comments").find({"blogid": id}).toArray(function(err, res) {
+                    if (res.length > 0) {
+                        console.log("more than 1");
+                    }
+                    db.close();
+                    return callback(null, res);
+                });
+            });
+        } catch (err) {
+            return callback(err, null);
+        }
+}
+
 
 app.get('/viewsingle/:blogid/', (request, response) => {
 	const blogid = request.params.blogid;
+    
     getBlogById(blogid, async (err, result) => {
         if (err || result == null) {
             request.flash('error', 'could not find blog');
             return response.redirect('/');
         }
         if(request.user != null && request.user.username == result.author) {
-            	addToHistory(request.user.username, "viewed", result, (err) => {
-			if (err) throw err;
-			response.render('viewsingle', {blog: result, editbutton: true, savebutton: true});
-		});
+            addToHistory(request.user.username, "viewed", blogid, (err) => {
+                if (err) throw err;
+                
+                getComments(blogid, async (err, res) => {
+                    if (err || res == null) {
+                        request.flash('error', 'could not find blog');
+                        return response.redirect('/');
+                    }
+                    response.render('viewsingle', {blog: result, editbutton: true, comments : res, savebutton: true});
+                });
+            });
         }
         else if(request.user != null && request.user.username != null && request.user.username != result.author) {
-        	addToHistory(request.user.username, "viewed", result, (err) => {
-			if (err) throw err;
-			response.render('viewsingle', {blog: result, upvote: true, downvote: true, savebutton: true});
-		});
+            addToHistory(request.user.username, "viewed", blogid, (err) => {
+                if (err) throw err;
+                getComments(blogid, async (err, res) => {
+                    if (err || res == null) {
+                        request.flash('error', 'could not find blog');
+                        return response.redirect('/');
+                    }
+                    response.render('viewsingle', {blog: result, upvote: true, downvote: true, comments : res, savebutton: true});
+                });
+            });
         }
         else {
-            response.render('viewsingle', {blog: result});
+            getComments(blogid, async (err, res) => {
+                if (err || res == null) {
+                    request.flash('error', 'could not find blog');
+                    return response.redirect('/');
+                }
+                response.render('viewsingle', {blog: result, comments : res});
+            });
         }
     });
 });
+
+app.get('/topic/:topic/', (request, response) => {
+    const topic = request.params.topic;
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { topic: topic };
+        dbo.collection('blogs').find(query).toArray((err, result) => {
+            if(err) throw err;
+            db.close();
+            var params = { arr: result, topic: topic };
+            if(request.user != null && request.user.following_topics != null && request.user.following_topics.includes(topic)) {
+                params.unfollowbutton = true;
+            }else if(request.user != null) {
+                params.followbutton = true;
+            }
+            response.render('topic', params);
+        });
+    });
+});
+
+// app.get('/topic/:topicname/', (request, response) => {
+//     const topicname = request.params.topicname;
+//     getBlogByTopic(topicname, async (err, result) => {
+//         if(err || result == null) {
+//             request.flash('error', 'could not find blog');
+//             return response.redirect('/');
+//         }else {
+//             response.redirect('/viewsingle/' + result._id.toString());
+//         }
+//     });
+// });
 
 app.get('/timeline/:sorttype/', (request, response) => {
 	const sort = request.params.sorttype;
@@ -276,12 +378,29 @@ app.get('/user/:username', (request, response) => {
             request.flash('error', 'User not found');
             return response.redirect('/');
         }
+        var params = { username: user.username };
         if(request.user != null && request.user.username == user.username) {
             // only display private information if that user is the one viewing
-            response.render('profile', { username: user.username, email: user.email });
-        }else {
-            response.render('profile', { username: user.username });
+            params.email = user.email;
+            params.school = user.school;
         }
+        if(request.user != null && request.user.following_users != null && request.user.following_users.includes(username)) {
+            params.unfollowbutton = true;
+        }else if(request.user != null && request.user.username != username) {
+            params.followbutton = true;
+        }
+        response.render('profile', params);
+    });
+});
+
+app.get('/user/:username/edit', (request, response) => {
+    const username = request.params.username;
+    getUserByUsername(username, (err, user) => {
+        if(err || user == null) {
+            request.flash('error', 'User not found');
+            return response.redirect('/');
+        }
+        response.render('editprofile', {user: user });
     });
 });
 
@@ -303,10 +422,236 @@ app.get('/edit/:blogid', (request, response) => {
     });
 });
 
+app.get('/deleteuser/:username', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'User must be logged in');
+        return response.redirect('/login/');
+    }
+    try {
+        const username = request.params.username;
+        getUserByUsername(username, (err, user) => {
+            if(err || user == null) {
+                request.flash('error', 'User not found');
+                return response.redirect('/');
+            }
+            if(request.user.username != username) {
+                request.flash('error', 'You don\'t have permission to delete this account');
+                return response.redirect('/');
+            }
+            MongoClient.connect(mongoURL, (err, db) => {
+                if(err) throw err;
+                var dbo = db.db("teapotdb");
+                var myQuery = { username: username };
+                
+                dbo.collection('users').deleteOne(myQuery, (err, res) => {
+                    if(err) throw err;
+                    console.log("User deleted ");
+                    db.close();
+                    return response.redirect('/');
+                });
+            });
+        });
+    }catch {
+        // throw e;
+        request.flash('error', 'Error delete user');
+        response.redirect('/');
+    }
+});
+
+
+app.get('/deleteblog/:blogid', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in');
+        return response.redirect('/login/');
+    }
+    try {
+        var blogid = request.params.blogid;
+        getBlogById(blogid, async (err, blog) => {
+            if(err || blog == null) {
+                request.flash('error', 'Blog not found');
+                return response.redirect('/');
+            }
+            if(blog.author != request.user.username) {
+                request.flash('error', 'You don\'t have permission to edit this blog');
+                return response.redirect('/');
+            }
+            MongoClient.connect(mongoURL, (err, db) => {
+                if(err) throw err;
+                var dbo = db.db("teapotdb");
+                var myQuery = { _id: ObjectId(blogid) };
+                
+                dbo.collection('blogs').deleteOne(myQuery, (err, db) => {
+                    if(err) throw err;
+                    console.log("1 blog deleted ");
+                    db.close();                  
+                });
+            });
+            response.redirect('/');
+        });
+    }catch {
+        // throw e;
+        request.flash('error', 'Error delete blog');
+        response.redirect('/');
+    }
+});
+
+app.get('/notifications/', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to see notifications');
+        return response.redirect('/login/');
+    }
+    notif_list = request.user.notifications;
+    read_list = request.user.read_notifications;
+    if(notif_list == null) {
+        notif_list = [];
+    }
+    if(read_list == null) {
+        read_list = [];
+    }
+    // move all notifications to read
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { username: request.user.username };
+        var update = {
+            $pullAll: { notifications: notif_list },
+            $push: { read_notifications: { $each: notif_list } }
+        };
+        dbo.collection('users').updateOne(query, update, (err, res) => {
+            if(err) throw err;
+            console.log("marked notifications as read");
+            db.close();
+            response.render('notifications', { notif_list: notif_list, read_list: read_list });
+        });
+    });
+});
+
+app.get('/followtopic/:topic', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to follow topics');
+        return response.redirect('/login/');
+    }
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { username: request.user.username };
+        var newvals = { $addToSet: { following_topics: request.params.topic }};
+        dbo.collection('users').updateOne(query, newvals, (err, res) => {
+            if(err) throw err;
+            console.log("added to following list");
+            db.close();
+            response.redirect('/topic/' + request.params.topic);
+        });
+    });
+});
+
+app.get('/unfollowtopic/:topic', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to unfollow topics');
+        return response.redirect('/login/');
+    }
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { username: request.user.username };
+        var newvals = { $pull: { following_topics: request.params.topic }};
+        dbo.collection('users').updateOne(query, newvals, (err, res) => {
+            if(err) throw err;
+            console.log("removed from following list");
+            db.close();
+            response.redirect('/topic/' + request.params.topic);
+        });
+    });
+});
+
+app.get('/follow/:username', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to follow users');
+        return response.redirect('/login/');
+    }
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { username: request.user.username };
+        var newvals = { $addToSet: { following_users: request.params.username }};
+        dbo.collection('users').updateOne(query, newvals, (err, res) => {
+            if(err) throw err;
+            console.log("added to following list");
+            var query2 = { username: request.params.username };
+            var newvals2 = { $addToSet: { followers: request.user.username }};
+            dbo.collection('users').updateOne(query2, newvals2, (err, res) => {
+                if(err) throw err;
+                console.log("added to followers list");
+                db.close();
+                response.redirect('/user/' + request.params.username);
+            });
+        });
+    });
+});
+
+app.get('/unfollow/:username', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to unfollow users');
+        return response.redirect('/login/');
+    }
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { username: request.user.username };
+        var newvals = { $pull: { following_users: request.params.username }};
+        dbo.collection('users').updateOne(query, newvals, (err, res) => {
+            if(err) throw err;
+            console.log("removed from following list");
+            var query2 = { username: request.params.username };
+            var newvals2 = { $pull: { followers: request.user.username }};
+            dbo.collection('users').updateOne(query2, newvals2, (err, res) => {
+                if(err) throw err;
+                console.log("removed from followers list");
+                db.close();
+                response.redirect('/user/' + request.params.username);
+            });
+        });
+    });
+});
+
 app.get('/logout/', (request, response) => {
     request.logout();
     response.redirect('/');
 });
+
+app.post('/postcomment/:blogid/', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to comment');
+        return response.redirect('/login/');
+    }
+    var commentObject = request.body;
+    commentObject.anon = request.body.anon;
+    if (commentObject.anon = 'on') {
+       commentObject.author = "anonymous";
+    }
+    else {
+        commentObject.author = request.user.username;
+    }
+    commentObject.voteCount = 0;
+    commentObject.blogid = request.params.blogid;
+    console.log(commentObject);
+    try {
+        MongoClient.connect(mongoURL, (err, db) => {
+            if(err) throw err;
+            var dbo = db.db("teapotdb");
+            dbo.collection("comments").insertOne(commentObject, (err, res) => {
+                if(err) throw err;
+                console.log("1 comment inserted to database");
+                db.close();
+                return response.redirect('/viewsingle/' + commentObject.blogid);
+            });
+        });
+    }catch {
+        request.flash('error', 'Error posting comment');
+        response.redirect('/viewsingle/' + blogid);
+    }
+});
+
 
 app.post('/postblog/', (request, response) => {
     if(request.user == null) {
@@ -324,14 +669,29 @@ app.post('/postblog/', (request, response) => {
             dbo.collection("blogs").insertOne(blogObject, (err, res) => {
                 if(err) throw err;
                 console.log("1 blog inserted to database");
-                db.close();
                 console.log("blog:");
                 console.log(res.ops[0]._id.toString());
-                addToHistory(request.user.username, "posted", res.ops[0], (err) => {
-			return response.redirect('/viewsingle/' + res.ops[0]._id.toString());
-		});
-			//return response.redirect('/viewsingle/' + res.ops[0]._id.toString());
 
+                // add notification to everyone following request.user
+                var query = {
+                    $or: [
+                        { following_users: { $in: [ request.user.username ] }},
+                        { following_topics: { $in: [ blogObject.topic ] }}
+                    ]
+                };
+                var update = { $push: { notifications: {
+                    blogid: res.ops[0]._id,
+                    title: blogObject.title,
+                    author: blogObject.author
+                }}};
+                dbo.collection("users").updateMany(query, update, (err, res2) => {
+                    if(err) throw err;
+                  
+                    addToHistory(request.user.username, "posted", res.ops[0]._id, (err) => {
+                        db.close();
+                        return response.redirect('/viewsingle/' + res.ops[0]._id.toString());
+                    });
+                });
             });
         });
     }catch {
@@ -377,6 +737,38 @@ app.post('/postblogedit/:blogid', (request, response) => {
         // throw e;
         request.flash('error', 'Error posting blog');
         response.redirect('/');
+    }
+});
+
+app.post('/postprofile/', async(request, response) => {
+    try {
+        if(request.user == null) {
+            request.flash('error', 'must be logged in to edit profile');
+            return response.redirect('/login/');
+        }
+        var userObject = request.body;
+        console.log(request.body);
+        // userObject.password = await bcrypt.hash(userObject.password, 10);
+        MongoClient.connect(mongoURL, (err, db) => {
+            if(err) throw err;
+            var dbo = db.db("teapotdb");
+            var query = { username: request.user.username };
+            var newvals = { $set : { school: userObject.school, firstName: userObject.firstName, 
+                            lastName: userObject.lastName, emailShow: userObject.emailShow, 
+                            schoolShow: userObject.schoolShow, firstNameShow: userObject.firstNameShow,
+                            lastNameShow: userObject.lastNameShow }};
+            dbo.collection('users').updateOne(query, newvals, (err, res) => {
+                if(err) throw err;
+                console.log("1 user profile updated.");
+                request.flash('info', 'Profile updated.');
+                db.close();
+                response.redirect('/user/' + request.user.username);
+            });
+        });
+    }catch(e) {
+        console.log(e);
+        console.log('error editing profile, redirecting to login.');
+        response.redirect('/login/');
     }
 });
 
@@ -509,6 +901,8 @@ app.get('/saved/', (request, response) => {
 
 app.post('/postregister', async (request, response) => {
     var userObject = request.body;
+    userObject.firstName = "";
+    userObject.lastName = "";
     // TODO: validate user object
     try {
         userObject.password = await bcrypt.hash(userObject.password, 10);
