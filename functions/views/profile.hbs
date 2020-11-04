@@ -3,12 +3,9 @@
     <p>Email: {{email}}</p>
 {{/if}}
 
-
-    <form method="delete" action="/deleteuser/{{username}}" onclick="return ConfirmDelete()">  
-        <input type="submit" value="Delete User"  />
-    </form>
-    
-
+<form method="delete" action="/deleteuser/{{username}}" onclick="return ConfirmDelete()">  
+    <input type="submit" value="Delete User"  />
+</form>
 
 <script type="text/javascript">
 function ConfirmDelete() { 
@@ -18,3 +15,10 @@ function ConfirmDelete() {
     return false;
 }
 </script>
+
+{{#if followbutton}}
+    <a href="/follow/{{username}}/">Follow</a>
+{{/if}}
+{{#if unfollowbutton}}
+    <a href="/unfollow/{{username}}/">Unfollow</a>
+{{/if}}
