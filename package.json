@@ -4,10 +4,17 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "consolidate": "^0.16.0",
+    "cookie-parser": "^1.4.5",
     "express": "^4.17.1",
+    "express-flash": "0.0.2",
+    "express-handlebars": "^5.1.0",
+    "express-session": "^1.17.1",
     "handlebars": "^4.7.6",
-    "mongod": "^2.0.0"
+    "mongod": "^2.0.0",
+    "passport": "^0.4.1",
+    "passport-local": "^1.0.0"
   },
   "devDependencies": {},
   "scripts": {
