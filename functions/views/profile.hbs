@@ -3,11 +3,12 @@
     <p>Email: {{email}}</p>
     <p>College/University: {{school}}</p>
     <a href="/user/{{username}}/edit">Edit profile</a>
+    <a href="/saved/">Saved Blogs</a>
+    <a href="/writeblog/">Write Blog</a>
+    <form method="delete" action="/deleteuser/{{username}}" onclick="return ConfirmDelete()">  
+        <input type="submit" value="Delete User"  />
+    </form>
 {{/if}}
-
-<form method="delete" action="/deleteuser/{{username}}" onclick="return ConfirmDelete()">  
-    <input type="submit" value="Delete User"  />
-</form>
 
 <script type="text/javascript">
 function ConfirmDelete() { 

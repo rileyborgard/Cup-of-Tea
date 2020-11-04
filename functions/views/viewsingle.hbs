@@ -5,7 +5,7 @@
 <p> By: <a href="/user/{{blog.author}}">{{blog.author}}</a></p>
 <p>{{blog.body}}</p>
 <p>Votes: {{blog.voteCount}}</p>
-<p>Topic: {{blog.topic}}</p>
+<p>Topic: <a href="/topic/{{blog.topic}}/">{{blog.topic}}</a></p>
 {{#if editbutton}}
 	<a href="/edit/{{blog._id}}">Edit</a>
 {{/if}}
