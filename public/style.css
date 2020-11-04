@@ -22,6 +22,7 @@ input {
     border-radius: 4px;
     padding: 4px;
     font-size: 16px;
+    font-family: "Courier New";
 }
 
 textarea {
@@ -29,6 +30,14 @@ textarea {
     border-radius: 4px;
     padding: 4px;
     font-size: 16px;
+}
+
+select {
+    border: solid 2px black;
+    border-radius: 4px;
+    padding: 4px;
+    font-size: 16px;
+    font-family: "Courier New";
 }
 
 .error-message {

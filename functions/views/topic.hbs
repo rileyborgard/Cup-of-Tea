@@ -1,3 +1,10 @@
+<h1>{{topic}}</h1>
+{{#if followbutton}}
+    <a href="/followtopic/{{topic}}/">Follow</a>
+{{/if}}
+{{#if unfollowbutton}}
+    <a href="/unfollowtopic/{{topic}}/">Unfollow</a>
+{{/if}}
 <ul>
 	{{#each arr}}
 	<li><h1><a href="/viewsingle/{{_id}}">{{title}}</a></h1>
