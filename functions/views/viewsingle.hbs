@@ -20,7 +20,11 @@
 </center>
 <ul>
    {{#each comments}}
-     <h3> by: <a href="/user/{{this.author}}">{{this.author}}</a></h3>
+     {{#if anon}}
+        <h3> by: Anonymous</h3>
+     {{else}} 
+        <h3> by: <a href="/user/{{this.author}}">{{this.author}}</a></h3>
+     {{/if}}
      <p> votes: {{this.voteCount}}</p>
      <p> {{this.body}} </p>
    {{/each}}
