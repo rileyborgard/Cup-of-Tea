@@ -675,6 +675,43 @@ app.post('/postcomment/:blogid/', (request, response) => {
     }
 });
 
+app.post('/sendmessage/:username/', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to send message');
+        return response.redirect('/login/');
+    }
+    var sender = request.user.username;
+    var receiver = request.params.username;
+    if(sender == receiver) {
+        request.flash('error', 'cannot send a message to yourself');
+        return response.redirect('/user/' + receiver);
+    }
+    var messageObject = request.body;
+    messageObject.sender = sender;
+    messageObject.receiver = receiver;
+    console.log(messageObject);
+    try {
+        MongoClient.connect(mongoURL, (err, db) => {
+            if(err) throw err;
+            var dbo = db.db("teapotdb");
+            var query = { $or: [
+                { username: receiver },
+                { username: sender }
+            ]};
+            var update = { $push: { messages: messageObject } };
+            dbo.collection("users").updateMany(query, update, (err, res) => {
+                if(err) throw err;
+                db.close();
+                request.flash('info', 'Message sent!');
+                return response.redirect('/user/' + receiver);
+            });
+        });
+    }catch {
+        request.flash('error', 'Error sending message');
+        response.redirect('/user/' + receiver);
+    }
+});
+
 
 app.post('/postblog/', (request, response) => {
     if(request.user == null) {
