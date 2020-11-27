@@ -26,5 +26,8 @@ function ConfirmDelete() {
     <a href="/unfollow/{{username}}/">Unfollow</a>
 {{/if}}
 {{#if messagebutton}}
-    <a href="/sendmessage/{{username}}/">Send Message</a>
+    <form method="post" action="/sendmessage/{{username}}/">
+        <textarea rows="8" name="body"></textarea><br><br>
+        <input type="submit" value="Send Message">
+    </form>
 {{/if}}
