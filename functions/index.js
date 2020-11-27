@@ -414,6 +414,9 @@ app.get('/user/:username', (request, response) => {
         }else if(request.user != null && request.user.username != username) {
             params.followbutton = true;
         }
+        if(request.user != null && request.user.username != username) {
+            params.messagebutton = true;
+        }
         response.render('profile', params);
     });
 });
