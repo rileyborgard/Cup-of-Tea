@@ -2,3 +2,29 @@
 {{#if email}}
     <p>Email: {{email}}</p>
 {{/if}}
+
+<form method="delete" action="/deleteuser/{{username}}" onclick="return ConfirmDelete()">  
+    <input type="submit" value="Delete User"  />
+</form>
+
+<script type="text/javascript">
+function ConfirmDelete() { 
+    if (confirm("Delete account?")) {
+        return true;
+    }
+    return false;
+}
+</script>
+
+{{#if followbutton}}
+    <a href="/follow/{{username}}/">Follow</a>
+{{/if}}
+{{#if unfollowbutton}}
+    <a href="/unfollow/{{username}}/">Unfollow</a>
+{{/if}}
+{{#if blockbutton}}
+	<a href="/block/{{username}}/">Block</a>
+{{/if}}
+{{#if unblockbutton}}
+	<a href="/unblock/{{username}}/">Unblock</a>
+{{/if}}
