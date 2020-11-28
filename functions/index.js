@@ -232,6 +232,10 @@ app.get('/viewsingle/:blogid/', (request, response) => {
             request.flash('error', 'could not find blog');
             return response.redirect('/');
         }
+	if (request.user != null && (request.user.blocked_users.includes(result.author) || request.user.blocked_by.includes(result.author))) {
+		request.flash('error', 'You have been blocked from seeing that post.');
+		return response.redirect('/');
+	}
         if(request.user != null && request.user.username == result.author) {
             addToHistory(request.user.username, "viewed", blogid, (err) => {
                 if (err) throw err;
@@ -306,14 +310,18 @@ app.get('/timeline/:sorttype/', (request, response) => {
 	MongoClient.connect(mongoURL, (err, db) => {
 		if (err) throw err;
 		var dbo = db.db("teapotdb");
+		//var query = {$or: [{author: {$nin: request.user.blocked_users}}, {author: {$nin: request.user.blocked_by}}]};
 		dbo.collection("blogs").find().toArray((err, result) => {
-			/*result.forEach((item, index) => {
-				console.log(item);
-			});*/
+			var next = [];
+			result.forEach((item, index) => {
+				if (request.user == null || request.user.blocked_users == null || request.user.blocked_by == null || !(request.user.blocked_users.includes(item.author) || request.user.blocked_by.includes(item.author))) {
+					next.push(item);
+				}
+			});
 			if (sort == "time") {
-				result.reverse();
+				next.reverse();
 			} else if (sort == "votes") {
-				result.sort(function(first, second) {
+				next.sort(function(first, second) {
 					var firstVotes = first.voteCount;
 					var secondVotes = second.voteCount;
 					if (firstVotes == null) {
@@ -332,9 +340,9 @@ app.get('/timeline/:sorttype/', (request, response) => {
 				});
 			}
 			if (request.user != null) {
-				response.render('viewblogs', {arr: result, vote: true});
+				response.render('viewblogs', {arr: next, vote: true});
 			} else {
-				response.render('viewblogs', {arr: result, vote: false});
+				response.render('viewblogs', {arr: next, vote: false});
 			}
 		});
 	});
