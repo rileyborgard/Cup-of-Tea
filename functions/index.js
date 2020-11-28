@@ -396,7 +396,7 @@ app.get('/user/:username', (request, response) => {
         }else if(request.user != null && request.user.username != username) {
             params.followbutton = true;
         }
-	if (request.user != null && request.user.blocked_users != null && !request.user.blocked_users.includes(username) && request.user.username != username) {
+	if (request.user != null && (request.user.blocked_users == null || !request.user.blocked_users.includes(username) && request.user.username != username)) {
 		params.blockbutton = true;
 	 } else if (request.user != null && request.user.username != username) {
 		params.unblockbutton = true;
