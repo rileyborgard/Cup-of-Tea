@@ -414,6 +414,9 @@ app.get('/user/:username', (request, response) => {
         }else if(request.user != null && request.user.username != username) {
             params.followbutton = true;
         }
+        if(request.user != null && request.user.username != username) {
+            params.messagebutton = true;
+        }
         response.render('profile', params);
     });
 });
@@ -551,6 +554,37 @@ app.get('/notifications/', (request, response) => {
     });
 });
 
+app.get('/messages/', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to see messages');
+        return response.redirect('/login/');
+    }
+    message_list = request.user.messages;
+    read_list = request.user.read_messages;
+    if(message_list == null) {
+        message_list = [];
+    }
+    if(read_list == null) {
+        read_list = [];
+    }
+    // move messages to read
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { username: request.user.username };
+        var update = {
+            $pullAll: { messages: message_list },
+            $push: { read_messages: { $each: message_list } }
+        };
+        dbo.collection('users').updateOne(query, update, (err, res) => {
+            if(err) throw err;
+            console.log('marked messages as read');
+            db.close();
+            response.render('messages', { message_list: message_list.reverse(), read_list: read_list.reverse() });
+        });
+    });
+});
+
 app.get('/followtopic/:topic', (request, response) => {
     if(request.user == null) {
         request.flash('error', 'must be logged in to follow topics');
@@ -669,6 +703,43 @@ app.post('/postcomment/:blogid/', (request, response) => {
     }catch {
         request.flash('error', 'Error posting comment');
         response.redirect('/viewsingle/' + blogid);
+    }
+});
+
+app.post('/sendmessage/:username/', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to send message');
+        return response.redirect('/login/');
+    }
+    var sender = request.user.username;
+    var receiver = request.params.username;
+    if(sender == receiver) {
+        request.flash('error', 'cannot send a message to yourself');
+        return response.redirect('/user/' + receiver);
+    }
+    var messageObject = request.body;
+    messageObject.sender = sender;
+    messageObject.receiver = receiver;
+    console.log(messageObject);
+    try {
+        MongoClient.connect(mongoURL, (err, db) => {
+            if(err) throw err;
+            var dbo = db.db("teapotdb");
+            var query = { $or: [
+                { username: receiver },
+                { username: sender }
+            ]};
+            var update = { $push: { messages: messageObject } };
+            dbo.collection("users").updateMany(query, update, (err, res) => {
+                if(err) throw err;
+                db.close();
+                request.flash('info', 'Message sent!');
+                return response.redirect('/user/' + receiver);
+            });
+        });
+    }catch {
+        request.flash('error', 'Error sending message');
+        response.redirect('/user/' + receiver);
     }
 });
 
