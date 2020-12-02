@@ -634,6 +634,18 @@ app.get('/messages/', (request, response) => {
     });
 });
 
+app.get('/deletedmessages/', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to see messages');
+        return response.redirect('/login/');
+    }
+    message_list = request.user.deleted_messages;
+    if(message_list == null) {
+        message_list = [];
+    }
+    response.render('deletedmessages', { message_list: message_list.reverse() });
+});
+
 app.get('/followtopic/:topic', (request, response) => {
     if(request.user == null) {
         request.flash('error', 'must be logged in to follow topics');
