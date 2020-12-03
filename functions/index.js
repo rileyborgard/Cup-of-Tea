@@ -618,6 +618,34 @@ app.get('/notifications/', (request, response) => {
     });
 });
 
+app.get('/DMsetting/', (request, response) => {
+    if(request.user) {
+        response.render('DMsetting');
+    }else {
+        request.flash('error', 'must be logged in');
+        response.redirect('/login/');
+    }
+});
+
+app.post('/updateDMsetting/', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in change DM settings');
+        return response.redirect('/login/');
+    }
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { username: request.user.username };
+        var newvals = { $set: { setting: request.body.setting }};
+        //0 = all users, 1 = only followers
+        dbo.collection('users').updateOne(query, newvals, (err, res) => {
+            if(err) throw err;
+            console.log("change the settings");
+            db.close();
+            response.redirect('/');
+        });
+    });
+});
 
 app.get('/messages/', (request, response) => {
     if(request.user == null) {
@@ -863,20 +891,32 @@ app.post('/sendmessage/:username/', (request, response) => {
     messageObject.id = ObjectId();
     console.log(messageObject);
     try {
-        MongoClient.connect(mongoURL, (err, db) => {
+        getUserByUsername(receiver, (err, user) => {
             if(err) throw err;
-            var dbo = db.db("teapotdb");
-            var query = { $or: [
-                { username: receiver },
-                { username: sender }
-            ]};
-            var update = { $push: { messages: messageObject } };
-            dbo.collection("users").updateMany(query, update, (err, res) => {
-                if(err) throw err;
-                db.close();
-                request.flash('info', 'Message sent!');
-                return response.redirect('/user/' + receiver);
-            });
+            if(user.blocked_users != null && user.blocked_users.includes(sender)) {
+                request.flash('error', 'You have been blocked from communication to this user.');
+                response.redirect('/user/' + receiver);
+            }
+            if(user.setting == null|| user.setting == null || (user.setting == "1" && user.following_users.includes(sender))) {
+                MongoClient.connect(mongoURL, (err, db) => {
+                    if(err) throw err;
+                    var dbo = db.db("teapotdb");
+                    var query = { $or: [
+                        { username: receiver },
+                        { username: sender }
+                    ]};
+                    var update = { $push: { messages: messageObject } };
+                    dbo.collection("users").updateMany(query, update, (err, res) => {
+                        if(err) throw err;
+                        db.close();
+                        request.flash('info', 'Message sent!');
+                        return response.redirect('/user/' + receiver);
+                    });
+                });
+            }else {
+                request.flash('error', 'cannot send message due to setting');
+                response.redirect('/user/' + receiver);
+            }
         });
     }catch {
         request.flash('error', 'Error sending message');
