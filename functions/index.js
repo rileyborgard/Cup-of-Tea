@@ -754,11 +754,11 @@ app.post('/sendmessage/:username/', (request, response) => {
     try {
         getUserByUsername(receiver, (err, user) => {
             if(err) throw err;
-            if(user.blocked_users.includes(sender)) {
+            if(user.blocked_users != null && user.blocked_users.includes(sender)) {
                 request.flash('error', 'You have been blocked from communication to this user.');
                 response.redirect('/user/' + receiver);
             }
-            if(user.setting == "0" || (user.setting == "1" && user.following_users.includes(sender))) {
+            if(user.setting == null|| user.setting == null || (user.setting == "1" && user.following_users.includes(sender))) {
                 MongoClient.connect(mongoURL, (err, db) => {
                     if(err) throw err;
                     var dbo = db.db("teapotdb");
