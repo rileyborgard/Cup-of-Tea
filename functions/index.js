@@ -572,7 +572,7 @@ app.post('/updateDMsetting/', (request, response) => {
         if(err) throw err;
         var dbo = db.db("teapotdb");
         var query = { username: request.user.username };
-        var newvals = { $set: { setting: request.params.setting }};
+        var newvals = { $set: { setting: request.body.setting }};
         //0 = all users, 1 = only followers
         dbo.collection('users').updateOne(query, newvals, (err, res) => {
             if(err) throw err;
@@ -760,23 +760,40 @@ app.post('/sendmessage/:username/', (request, response) => {
                 { username: receiver },
                 {   }
             ]};
+            
+              
+            //    request.flash('error', 'You have been blocked from communication to this user.');
+            //    response.redirect('/user/' + receiver);
+            ; //find sender in the receiver's blocklist
 
-            var checkBlock = dbo.receiver.collection("blocked_users").findOne({username : sender}); //find sender in the receiver's blocklist
-            if (!checkFollow) {
-                request.flash('error', 'You have been blocked from communication to this user.');
-                response.redirect('/user/' + receiver);
-            }
-
-            if (receiver.setting == 1) {
-                var checkFollow = dbo.receiver.collection("following_users").findOne({username : sender}); //find sender in the receiver's followlist
-                
-                if (!checkFollow) {
-                    request.flash('error', 'You cannot send message to this user due to this user setting.');
+            getUserByUsername(receiver, (err, user) => {
+                if(err) throw err;
+                //if(user.blocked_users.includes(sender)) {
+                //    request.flash('error', 'You have been blocked from communication to this user.');
+                //    response.redirect('/user/' + receiver);
+                //}
+                if(user.setting == "0" || (user.setting == "1" && user.following_users.includes(sender))) {
+                    MongoClient.connect(mongoURL, (err, db) => {
+                        if(err) throw err;
+                        var dbo = db.db("teapotdb");
+                        var query = { $or: [
+                            { username: receiver },
+                            { username: sender }
+                        ]};
+                        var update = { $push: { messages: messageObject } };
+                        dbo.collection("users").updateMany(query, update, (err, res) => {
+                            if(err) throw err;
+                            db.close();
+                            request.flash('info', 'Message sent!');
+                            return response.redirect('/user/' + receiver);
+                        });
+                    });
+                }else {
+                    request.flash('error', 'cannot send message due to setting');
                     response.redirect('/user/' + receiver);
                 }
-            } 
-            //setting == 0 => not do anything
-            // need to update to check for block list
+            });
+        
             var update = { $push: { messages: messageObject } };
             dbo.collection("users").updateMany(query, update, (err, res) => {
                 if(err) throw err;
