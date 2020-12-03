@@ -6,6 +6,7 @@
 <p>{{blog.body}}</p>
 <p>Votes: {{blog.voteCount}}</p>
 <p>Topic: <a href="/topic/{{blog.topic}}/">{{blog.topic}}</a></p>
+
 {{#if editbutton}}
 	<a href="/edit/{{blog._id}}">Edit</a>
 {{/if}}
@@ -42,6 +43,7 @@ function ConfirmDelete() {
 </center>
 <ul>
    {{#each comments}}
+
      {{#if anon}}
         <h3> by: Anonymous</h3>
      {{else}} 

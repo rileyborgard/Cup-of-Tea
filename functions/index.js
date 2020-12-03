@@ -205,6 +205,7 @@ const getBlogByTopic = async (topicname, callback) => {
 	}
 }
 
+
 const getUsersBySchool = async (school, callback) => {
     try {
         MongoClient.connect(mongoURL, (err, db) => {
@@ -221,13 +222,13 @@ const getUsersBySchool = async (school, callback) => {
     }
 }
 
+
 const getComments = async (id, callback) => {
         try {
             MongoClient.connect(mongoURL, (err, db) => {
                 if(err) throw err;
                 var dbo = db.db("teapotdb");
                 dbo.collection("comments").find({"blogid": id}).toArray(function(err, res) {
-                    
                     if (res.length > 0) {
                         console.log("more than 1");
                     }
@@ -249,6 +250,10 @@ app.get('/viewsingle/:blogid/', (request, response) => {
             request.flash('error', 'could not find blog');
             return response.redirect('/');
         }
+	if (request.user != null && ((request.user.blocked_users != null && request.user.blocked_users.includes(result.author)) || (request.user.blocked_by != null && request.user.blocked_by.includes(result.author)))) {
+		request.flash('error', 'You have been blocked from seeing that post.');
+		return response.redirect('/');
+	}
         if(request.user != null && request.user.username == result.author) {
             addToHistory(request.user.username, "viewed", blogid, (err) => {
                 if (err) throw err;
@@ -323,14 +328,18 @@ app.get('/timeline/:sorttype/', (request, response) => {
 	MongoClient.connect(mongoURL, (err, db) => {
 		if (err) throw err;
 		var dbo = db.db("teapotdb");
+		//var query = {$or: [{author: {$nin: request.user.blocked_users}}, {author: {$nin: request.user.blocked_by}}]};
 		dbo.collection("blogs").find().toArray((err, result) => {
-			/*result.forEach((item, index) => {
-				console.log(item);
-			});*/
+			var next = [];
+			result.forEach((item, index) => {
+				if (request.user == null || request.user.blocked_users == null || request.user.blocked_by == null || !(request.user.blocked_users.includes(item.author) || request.user.blocked_by.includes(item.author))) {
+					next.push(item);
+				}
+			});
 			if (sort == "time") {
-				result.reverse();
+				next.reverse();
 			} else if (sort == "votes") {
-				result.sort(function(first, second) {
+				next.sort(function(first, second) {
 					var firstVotes = first.voteCount;
 					var secondVotes = second.voteCount;
 					if (firstVotes == null) {
@@ -349,9 +358,9 @@ app.get('/timeline/:sorttype/', (request, response) => {
 				});
 			}
 			if (request.user != null) {
-				response.render('viewblogs', {arr: result, vote: true});
+				response.render('viewblogs', {arr: next, vote: true});
 			} else {
-				response.render('viewblogs', {arr: result, vote: false});
+				response.render('viewblogs', {arr: next, vote: false});
 			}
 		});
 	});
@@ -414,6 +423,11 @@ app.get('/user/:username', (request, response) => {
         }else if(request.user != null && request.user.username != username) {
             params.followbutton = true;
         }
+        if (request.user != null && (request.user.blocked_users == null || !request.user.blocked_users.includes(username) && request.user.username != username)) {
+		      params.blockbutton = true;
+	      } else if (request.user != null && request.user.username != username) {
+		      params.unblockbutton = true;
+	      }
         if(request.user != null && request.user.username != username) {
             params.messagebutton = true;
         }
@@ -429,6 +443,7 @@ app.get('/user/:username/edit', (request, response) => {
             return response.redirect('/');
         }
         response.render('editprofile', {user: user });
+
     });
 });
 
@@ -470,7 +485,6 @@ app.get('/deleteuser/:username', (request, response) => {
                 if(err) throw err;
                 var dbo = db.db("teapotdb");
                 var myQuery = { username: username };
-                
                 dbo.collection('users').deleteOne(myQuery, (err, res) => {
                     if(err) throw err;
                     console.log("User deleted ");
@@ -520,6 +534,56 @@ app.get('/deleteblog/:blogid', (request, response) => {
         // throw e;
         request.flash('error', 'Error delete blog');
         response.redirect('/');
+    }
+});
+
+
+app.get('/deletemessage/:messageid', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in');
+        return response.redirect('/login/');
+    }
+    try {
+        var messageid = request.params.messageid;
+        var messageObject = null;
+        console.log("messageid = " + messageid);
+        console.log(typeof messageid);
+        for(message of request.user.messages) {
+            console.log("checking with message.id = " + message.id);
+            console.log(typeof message.id);
+            if(message.id.valueOf() == messageid) {
+                messageObject = message;
+            }
+        }
+        for(message of request.user.read_messages) {
+            console.log("checking with message.id = " + message.id);
+            console.log(typeof message.id);
+            if(message.id.valueOf() == messageid) {
+                messageObject = message;
+            }
+        }
+        if(messageObject == null) {
+            request.flash('error', 'Message does not exist');
+            return response.redirect('/messages/');
+        }
+        MongoClient.connect(mongoURL, (err, db) => {
+            if(err) throw err;
+            var dbo = db.db("teapotdb");
+            var query = { username: request.user.username };
+            var update = {
+                $pull: { messages: messageObject, read_messages: messageObject },
+                $push: { deleted_messages: messageObject }
+            };
+            dbo.collection('users').updateOne(query, update, (err, res) => {
+                if(err) throw err;
+                db.close();
+                request.flash('info', 'Message deleted');
+                return response.redirect('/messages/');
+            });
+        });
+    }catch {
+        request.flash('error', 'Error deleting message');
+        response.redirect('/messages/');
     }
 });
 
@@ -614,6 +678,18 @@ app.get('/messages/', (request, response) => {
     });
 });
 
+app.get('/deletedmessages/', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to see messages');
+        return response.redirect('/login/');
+    }
+    message_list = request.user.deleted_messages;
+    if(message_list == null) {
+        message_list = [];
+    }
+    response.render('deletedmessages', { message_list: message_list.reverse() });
+});
+
 app.get('/followtopic/:topic', (request, response) => {
     if(request.user == null) {
         request.flash('error', 'must be logged in to follow topics');
@@ -702,6 +778,67 @@ app.get('/unfollow/:username', (request, response) => {
     });
 });
 
+
+app.get('/block/:username', (request, response) => {
+	if (request.user == null) {
+		request.flash('error', 'You must be logged in to block a user.');
+		return response.redirect('/login/');
+	}
+	MongoClient.connect(mongoURL, (err, db) => {
+		if (err) throw err;
+		var dbo = db.db("teapotdb");
+		var query = {username: request.user.username};
+		var newvals = {$addToSet: {blocked_users: request.params.username}};
+		dbo.collection('users').updateOne(query, newvals, (err, res) => {
+			if (err) throw err;
+			console.log("added to blocked list");
+			var query2 = {username: request.params.username};
+			var newervals = {$addToSet: {blocked_by: request.user.username}};
+			dbo.collection('users').updateOne(query2, newervals, (err, res) => {
+				if (err) throw err;
+				console.log("added to blocked by list");
+				db.close();
+				response.redirect('/user/' + request.params.username);
+			});
+		});
+	});
+});
+
+app.get('/unblock/:username', (request, response) => {
+	if (request.user == null) {
+		request.flash('error', "You must be logged in to unblock a user.");
+		return response.redirect('/login/');
+	}
+	MongoClient.connect(mongoURL, (err, db) => {
+		if (err) throw err;
+		var dbo = db.db("teapotdb");
+		var query = {username: request.user.username};
+		var newvals = {$pull: {blocked_users: request.params.username}};
+		dbo.collection('users').updateOne(query, newvals, (err, res) => {
+			console.log("removed from blocked list");
+			var query2 = {username: request.params.username};
+			var newervals = {$pull: {blocked_by: request.user.username}};
+			dbo.collection('users').updateOne(query2, newervals, (err, res) => {
+				if (err) throw err;
+				console.log("removed from blocked by list");
+				db.close();
+				response.redirect('/user/' + request.params.username);
+			});
+		});
+	});
+});
+
+app.get('/blocked/', (request, response) => {
+	getUserByUsername(request.user.username, (err, user) => {
+		if (err || user == null) {
+			request.flash('error', 'Please login first');
+			return response.redirect('/login/');
+		} else {
+			response.render('blocked', {blocked: user.blocked_users});
+		}
+	});	
+});
+
 app.get('/logout/', (request, response) => {
     request.logout();
     response.redirect('/');
@@ -714,6 +851,7 @@ app.post('/postcomment/:blogid/', (request, response) => {
     }
     var commentObject = request.body;
     commentObject.anon = request.body.anon;
+
     commentObject.author = request.user.username;
     commentObject.voteCount = 0;
     commentObject.blogid = request.params.blogid;
@@ -734,6 +872,7 @@ app.post('/postcomment/:blogid/', (request, response) => {
         response.redirect('/viewsingle/' + blogid);
     }
 });
+
 
 app.post('/sendmessage/:username/', (request, response) => {
     if(request.user == null) {

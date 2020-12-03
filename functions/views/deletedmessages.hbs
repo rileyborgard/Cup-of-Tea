@@ -1,0 +1,11 @@
+<a href="/messages/">Active Messages</a>
+<h1>Deleted Messages</h1>
+<ul>
+    {{#each message_list}}
+    <li>
+        <p>{{body}}</p>
+        <p>from: <a href="/user/{{sender}}">{{sender}}</a></p>
+        <p>to: <a href="/user/{{receiver}}">{{receiver}}</a></p>
+    </li>
+    {{/each}}
+</ul>
