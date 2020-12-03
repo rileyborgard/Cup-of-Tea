@@ -1,11 +1,15 @@
 <h1>{{username}}</h1>
 {{#if email}}
     <p>Email: {{email}}</p>
-{{/if}}
 
-<form method="delete" action="/deleteuser/{{username}}" onclick="return ConfirmDelete()">  
-    <input type="submit" value="Delete User"  />
-</form>
+    <p>College/University: {{school}}</p>
+    <a href="/user/{{username}}/edit">Edit profile</a>
+    <a href="/saved/">Saved Blogs</a>
+    <a href="/writeblog/">Write Blog</a>
+    <form method="delete" action="/deleteuser/{{username}}" onclick="return ConfirmDelete()">  
+        <input type="submit" value="Delete User"  />
+    </form>
+{{/if}}
 
 <script type="text/javascript">
 function ConfirmDelete() { 
@@ -27,4 +31,10 @@ function ConfirmDelete() {
 {{/if}}
 {{#if unblockbutton}}
 	<a href="/unblock/{{username}}/">Unblock</a>
+{{/if}}
+{{#if messagebutton}}
+    <form method="post" action="/sendmessage/{{username}}/">
+        <textarea rows="8" name="body"></textarea><br><br>
+        <input type="submit" value="Send Message">
+    </form>
 {{/if}}

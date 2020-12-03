@@ -1,0 +1,23 @@
+<a href="/deletedmessages/">Deleted Messages</a>
+<h1>Unread Messages</h1>
+<ul>
+    {{#each message_list}}
+    <li>
+        <p>{{body}}</p>
+        <p>from: <a href="/user/{{sender}}">{{sender}}</a></p>
+        <p>to: <a href="/user/{{receiver}}">{{receiver}}</a></p>
+        <a href="/deletemessage/{{id}}">Delete message</a>
+    </li>
+    {{/each}}
+</ul>
+<h1>Old Messages</h1>
+<ul>
+    {{#each read_list}}
+    <li>
+        <p>{{body}}</p>
+        <p>from: <a href="/user/{{sender}}">{{sender}}</a></p>
+        <p>to: <a href="/user/{{receiver}}">{{receiver}}</a></p>
+        <a href="/deletemessage/{{id}}">Delete message</a>
+    </li>
+    {{/each}}
+</ul>

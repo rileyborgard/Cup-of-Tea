@@ -1,0 +1,19 @@
+<center>
+    <h1>User Information</h1>
+    <h2>Fill in information and choose what you would like the public to see.</h2>
+</center>
+<left>
+    <form method="post" action="/postprofile/">
+        <input type="checkbox" name="emailShow">Email</input>
+        {{user.email}}<br><br>
+        <input type="checkbox" name="schoolShow">College/University</input>
+        <input type="text" name="school"></input><br><br>
+        <input type="checkbox" name="firstNameShow">First Name</input>
+        <input type="text" name="firstName"></input><br><br>
+        <input type="checkbox" name="lastNameShow">Last Name</input>
+        <input type="text" name="lastName"></input>
+        <center>
+            <input type="submit" value="Submit">
+        </center>
+    </form>
+</left>

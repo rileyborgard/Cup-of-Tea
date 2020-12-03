@@ -5,7 +5,8 @@
 <p> By: <a href="/user/{{blog.author}}">{{blog.author}}</a></p>
 <p>{{blog.body}}</p>
 <p>Votes: {{blog.voteCount}}</p>
-<p>Topic: {{blog.topic}}</p>
+<p>Topic: <a href="/topic/{{blog.topic}}/">{{blog.topic}}</a></p>
+
 {{#if editbutton}}
 	<a href="/edit/{{blog._id}}">Edit</a>
 {{/if}}
@@ -42,7 +43,12 @@ function ConfirmDelete() {
 </center>
 <ul>
    {{#each comments}}
-     <h3> by: <a href="/user/{{this.author}}">{{this.author}}</a></h3>
+
+     {{#if anon}}
+        <h3> by: Anonymous</h3>
+     {{else}} 
+        <h3> by: <a href="/user/{{this.author}}">{{this.author}}</a></h3>
+     {{/if}}
      <p> votes: {{this.voteCount}}</p>
      <p> {{this.body}} </p>
    {{/each}}
