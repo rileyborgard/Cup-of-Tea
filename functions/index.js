@@ -554,6 +554,35 @@ app.get('/notifications/', (request, response) => {
     });
 });
 
+app.get('/DMsetting/', (request, response) => {
+    if(request.user) {
+        response.render('DMsetting');
+    }else {
+        request.flash('error', 'must be logged in');
+        response.redirect('/login/');
+    }
+});
+
+app.post('/updateDMsetting/', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in change DM settings');
+        return response.redirect('/login/');
+    }
+    MongoClient.connect(mongoURL, (err, db) => {
+        if(err) throw err;
+        var dbo = db.db("teapotdb");
+        var query = { username: request.user.username };
+        var newvals = { $set: { setting: request.params.setting }};
+        //0 = all users, 1 = only followers
+        dbo.collection('users').updateOne(query, newvals, (err, res) => {
+            if(err) throw err;
+            console.log("change the settings");
+            db.close();
+            response.redirect('/');
+        });
+    });
+});
+
 app.get('/messages/', (request, response) => {
     if(request.user == null) {
         request.flash('error', 'must be logged in to see messages');
@@ -717,6 +746,8 @@ app.post('/sendmessage/:username/', (request, response) => {
         request.flash('error', 'cannot send a message to yourself');
         return response.redirect('/user/' + receiver);
     }
+    //setting = 0 then all user || setting = 1 then only followers
+
     var messageObject = request.body;
     messageObject.sender = sender;
     messageObject.receiver = receiver;
@@ -727,8 +758,25 @@ app.post('/sendmessage/:username/', (request, response) => {
             var dbo = db.db("teapotdb");
             var query = { $or: [
                 { username: receiver },
-                { username: sender }
+                {   }
             ]};
+
+            var checkBlock = dbo.receiver.collection("blocked_users").findOne({username : sender}); //find sender in the receiver's blocklist
+            if (!checkFollow) {
+                request.flash('error', 'You have been blocked from communication to this user.');
+                response.redirect('/user/' + receiver);
+            }
+
+            if (receiver.setting == 1) {
+                var checkFollow = dbo.receiver.collection("following_users").findOne({username : sender}); //find sender in the receiver's followlist
+                
+                if (!checkFollow) {
+                    request.flash('error', 'You cannot send message to this user due to this user setting.');
+                    response.redirect('/user/' + receiver);
+                }
+            } 
+            //setting == 0 => not do anything
+            // need to update to check for block list
             var update = { $push: { messages: messageObject } };
             dbo.collection("users").updateMany(query, update, (err, res) => {
                 if(err) throw err;
