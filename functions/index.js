@@ -746,61 +746,38 @@ app.post('/sendmessage/:username/', (request, response) => {
         request.flash('error', 'cannot send a message to yourself');
         return response.redirect('/user/' + receiver);
     }
-    //setting = 0 then all user || setting = 1 then only followers
-
     var messageObject = request.body;
     messageObject.sender = sender;
     messageObject.receiver = receiver;
+    messageObject.id = ObjectId();
     console.log(messageObject);
     try {
-        MongoClient.connect(mongoURL, (err, db) => {
+        getUserByUsername(receiver, (err, user) => {
             if(err) throw err;
-            var dbo = db.db("teapotdb");
-            var query = { $or: [
-                { username: receiver },
-                {   }
-            ]};
-            
-              
-            //    request.flash('error', 'You have been blocked from communication to this user.');
-            //    response.redirect('/user/' + receiver);
-            ; //find sender in the receiver's blocklist
-
-            getUserByUsername(receiver, (err, user) => {
-                if(err) throw err;
-                //if(user.blocked_users.includes(sender)) {
-                //    request.flash('error', 'You have been blocked from communication to this user.');
-                //    response.redirect('/user/' + receiver);
-                //}
-                if(user.setting == "0" || (user.setting == "1" && user.following_users.includes(sender))) {
-                    MongoClient.connect(mongoURL, (err, db) => {
+            if(user.blocked_users.includes(sender)) {
+                request.flash('error', 'You have been blocked from communication to this user.');
+                response.redirect('/user/' + receiver);
+            }
+            if(user.setting == "0" || (user.setting == "1" && user.following_users.includes(sender))) {
+                MongoClient.connect(mongoURL, (err, db) => {
+                    if(err) throw err;
+                    var dbo = db.db("teapotdb");
+                    var query = { $or: [
+                        { username: receiver },
+                        { username: sender }
+                    ]};
+                    var update = { $push: { messages: messageObject } };
+                    dbo.collection("users").updateMany(query, update, (err, res) => {
                         if(err) throw err;
-                        var dbo = db.db("teapotdb");
-                        var query = { $or: [
-                            { username: receiver },
-                            { username: sender }
-                        ]};
-                        var update = { $push: { messages: messageObject } };
-                        dbo.collection("users").updateMany(query, update, (err, res) => {
-                            if(err) throw err;
-                            db.close();
-                            request.flash('info', 'Message sent!');
-                            return response.redirect('/user/' + receiver);
-                        });
+                        db.close();
+                        request.flash('info', 'Message sent!');
+                        return response.redirect('/user/' + receiver);
                     });
-                }else {
-                    request.flash('error', 'cannot send message due to setting');
-                    response.redirect('/user/' + receiver);
-                }
-            });
-        
-            var update = { $push: { messages: messageObject } };
-            dbo.collection("users").updateMany(query, update, (err, res) => {
-                if(err) throw err;
-                db.close();
-                request.flash('info', 'Message sent!');
-                return response.redirect('/user/' + receiver);
-            });
+                });
+            }else {
+                request.flash('error', 'cannot send message due to setting');
+                response.redirect('/user/' + receiver);
+            }
         });
     }catch {
         request.flash('error', 'Error sending message');
