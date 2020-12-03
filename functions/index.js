@@ -250,7 +250,7 @@ app.get('/viewsingle/:blogid/', (request, response) => {
             request.flash('error', 'could not find blog');
             return response.redirect('/');
         }
-	if (request.user != null && (request.user.blocked_users.includes(result.author) || request.user.blocked_by.includes(result.author))) {
+	if (request.user != null && ((request.user.blocked_users != null && request.user.blocked_users.includes(result.author)) || (request.user.blocked_by != null && request.user.blocked_by.includes(result.author)))) {
 		request.flash('error', 'You have been blocked from seeing that post.');
 		return response.redirect('/');
 	}
