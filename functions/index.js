@@ -523,6 +523,55 @@ app.get('/deleteblog/:blogid', (request, response) => {
     }
 });
 
+app.get('/deletemessage/:messageid', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in');
+        return response.redirect('/login/');
+    }
+    try {
+        var messageid = request.params.messageid;
+        var messageObject = null;
+        console.log("messageid = " + messageid);
+        console.log(typeof messageid);
+        for(message of request.user.messages) {
+            console.log("checking with message.id = " + message.id);
+            console.log(typeof message.id);
+            if(message.id.valueOf() == messageid) {
+                messageObject = message;
+            }
+        }
+        for(message of request.user.read_messages) {
+            console.log("checking with message.id = " + message.id);
+            console.log(typeof message.id);
+            if(message.id.valueOf() == messageid) {
+                messageObject = message;
+            }
+        }
+        if(messageObject == null) {
+            request.flash('error', 'Message does not exist');
+            return response.redirect('/messages/');
+        }
+        MongoClient.connect(mongoURL, (err, db) => {
+            if(err) throw err;
+            var dbo = db.db("teapotdb");
+            var query = { username: request.user.username };
+            var update = {
+                $pull: { messages: messageObject, read_messages: messageObject },
+                $push: { deleted_messages: messageObject }
+            };
+            dbo.collection('users').updateOne(query, update, (err, res) => {
+                if(err) throw err;
+                db.close();
+                request.flash('info', 'Message deleted');
+                return response.redirect('/messages/');
+            });
+        });
+    }catch {
+        request.flash('error', 'Error deleting message');
+        response.redirect('/messages/');
+    }
+});
+
 app.get('/notifications/', (request, response) => {
     if(request.user == null) {
         request.flash('error', 'must be logged in to see notifications');
@@ -583,6 +632,18 @@ app.get('/messages/', (request, response) => {
             response.render('messages', { message_list: message_list.reverse(), read_list: read_list.reverse() });
         });
     });
+});
+
+app.get('/deletedmessages/', (request, response) => {
+    if(request.user == null) {
+        request.flash('error', 'must be logged in to see messages');
+        return response.redirect('/login/');
+    }
+    message_list = request.user.deleted_messages;
+    if(message_list == null) {
+        message_list = [];
+    }
+    response.render('deletedmessages', { message_list: message_list.reverse() });
 });
 
 app.get('/followtopic/:topic', (request, response) => {
@@ -720,6 +781,7 @@ app.post('/sendmessage/:username/', (request, response) => {
     var messageObject = request.body;
     messageObject.sender = sender;
     messageObject.receiver = receiver;
+    messageObject.id = ObjectId();
     console.log(messageObject);
     try {
         MongoClient.connect(mongoURL, (err, db) => {
